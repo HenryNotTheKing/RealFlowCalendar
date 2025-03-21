@@ -1,21 +1,22 @@
-import { app as r, BrowserWindow as t } from "electron";
-import i from "url";
-import o from "path";
-let n = i.fileURLToPath(import.meta.url), a = o.dirname(n);
-const l = () => {
-  const e = new t({
+import { app, BrowserWindow } from "electron";
+import url from "url";
+import path from "path";
+let __filename = url.fileURLToPath(import.meta.url);
+let __dirname = path.dirname(__filename);
+const createWindow = () => {
+  const mainWindow = new BrowserWindow({
     width: 1e3,
     height: 600,
     icon: "electron/resource/image/Icon.ico",
-    autoHideMenuBar: !0,
+    autoHideMenuBar: true,
     // 新增以下配置关闭控制台窗口
     webPreferences: {
-      nodeIntegration: !0,
-      contextIsolation: !0,
-      preload: o.resolve(a, "preload.mjs")
+      nodeIntegration: true,
+      contextIsolation: true,
+      preload: path.resolve(__dirname, "preload.mjs")
     },
     // 新增以下配置隐藏默认框架
-    frame: !1,
+    frame: false,
     // 去除默认窗口框架
     titleBarStyle: "hidden"
     // titleBarOverlay: {
@@ -23,8 +24,12 @@ const l = () => {
     //     symbolColor: '#74b1be' // 控制按钮颜色
     // }
   });
-  process.env.VITE_DEV_SERVER_URL ? e.loadURL(process.env.VITE_DEV_SERVER_URL) : e.loadFile("dist/index.html");
+  if (process.env["VITE_DEV_SERVER_URL"]) {
+    mainWindow.loadURL(process.env["VITE_DEV_SERVER_URL"]);
+  } else {
+    mainWindow.loadFile("dist/index.html");
+  }
 };
-r.whenReady().then(() => {
-  l();
+app.whenReady().then(() => {
+  createWindow();
 });
