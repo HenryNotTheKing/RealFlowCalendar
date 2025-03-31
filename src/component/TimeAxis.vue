@@ -52,7 +52,7 @@ const currentTimeStyle = computed(() => ({
   color: #999999;  /* 浅灰色 */
   font-size: 12px;
   text-align: right;
-  right: 2px;
+  right: 4px;
   white-space: nowrap;
   transform: translateY(-50%);
   pointer-events: none;
@@ -64,7 +64,7 @@ const currentTimeStyle = computed(() => ({
   top: 50%;                   
   transform: translateY(-50%);
   text-align: right;
-  right: 0px;
+  right: 4px;
   height: 24px;  /* 线的高度 */
   width: 36px;
   border-radius: 4px;
