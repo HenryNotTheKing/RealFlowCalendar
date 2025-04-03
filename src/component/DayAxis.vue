@@ -40,6 +40,7 @@ const timeAxisWidth = computed(() => props.timeAxisWidth);
   position: relative;
   text-align: center;
   width:48px;
+  user-select: none;
 }
  .line{
     background: #AAA;

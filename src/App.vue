@@ -27,4 +27,8 @@
 
 <style>
 
+img {
+  user-select: none;
+}
+
 </style>
