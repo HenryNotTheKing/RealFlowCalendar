@@ -1,5 +1,7 @@
 <template>
-  <div class="sub-left-panel"></div>
+  <div class="sub-left-panel">
+    <ChenCalendar />
+  </div>
   <div class="divideline_left"></div>
   <div class="sub-center-panel" >
     <DayAxis :timeAxisWidth="timeAxisWidth"/>
@@ -20,6 +22,7 @@
 import CalendarDisplay from '../component/CalendarDisplay.vue';
 import DayAxis from '../component/DayAxis.vue';
 import TimeAxis from '../component/TimeAxis.vue';
+import ChenCalendar from '../component/ChenCalendar.vue';
 import { ref, onMounted} from 'vue';
 
 const parentRef = ref(null);
@@ -75,4 +78,5 @@ onMounted(() => {
 .day-axis {
   display: block
 }
+
 </style>

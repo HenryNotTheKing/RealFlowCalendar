@@ -45,6 +45,7 @@ const currentTimeStyle = computed(() => ({
   position: relative;
   height: 100%;
   min-width: 100%;
+
 }
 
 .time-label {
