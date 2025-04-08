@@ -92,14 +92,13 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, defineProps, watch } from 'vue';
 import { CanvasParams } from "../stores/CanvasParams.js";
-const useCanvasParams = CanvasParams();
 
+// 画布配置
+const useCanvasParams = CanvasParams();
 const props = defineProps({
   canvasWidth: { type: Number, default: 1200 },
   canvasHeight: { type: Number, default: 960 }
 });
-
-// 画布配置
 const canvasWidth = computed(() => props.canvasWidth );
 const rowHeight = ref(20);
 const containerHeight = ref(0);
@@ -111,7 +110,7 @@ const canvasHeight = computed(() => Math.max(
 const maxRowHeight = 50;
 const colWidth = computed(() => canvasWidth.value / 7);
 
-
+//矩形圆角绘制
 function getStripePath(rect) {
       const pos = this.getRectPosition(rect);
       const x = pos.x;
@@ -127,7 +126,7 @@ function getStripePath(rect) {
           Z`;
     }
 
-    
+//检测鼠标滚动
 onMounted(() => {
   const resizeObserver = new ResizeObserver(entries => {
       if (entries[0]) {
@@ -165,7 +164,7 @@ const container = ref(null);
 
 // 网格系统
 const verticalTicks = computed(() =>
-  Array.from({ length: 8 }, (_, i) => i * colWidth.value)
+  Array.from({ length: 9 }, (_, i) => i * colWidth.value)
 );
 const horizontalTicks = computed(() =>
   Array.from({ length: 25 }, (_, i) => i * rowHeight.value * 4)
@@ -181,7 +180,7 @@ const currentColumn = ref(0);
 const rects = ref([]);
 const dragOffsetX = ref(0);
 const dragOffsetY = ref(0);
-const selectedRectIndex = ref(-1);
+const selectedRectIndex = ref(-1);//用于处理拖动
 
 // 有效性检查
 const validHeight = computed(() => Math.abs(currentRow.value - startRow.value) > 0);
@@ -484,39 +483,40 @@ function handleKeyDown(event) {
   }
 }
 
-
+//监听缩放，回传给时间轴
 useCanvasParams.rowHeight = rowHeight.value*4;
 useCanvasParams.colWidth = colWidth.value;
-
 
 watch(rowHeight, (newHeight) => { useCanvasParams.rowHeight = newHeight*4 });
 watch(colWidth, (newWidth) => { useCanvasParams.colWidth = newWidth });
 
-
+// 清理事件监听
 onUnmounted(() => {
   if (container.value) {
     container.value.removeEventListener('scroll', handleScroll);
   }
   window.removeEventListener('keydown', handleKeyDown);
 });
+
 </script>
 
 <style scoped>
 .canvas-container {
   width: 100%;
   height: 100%;
-  overflow: auto;
-  background: #fff;
+  overflow: overlay;
+  background: white;
   display: flex;
 }
 
 .draw-canvas {
+  width: 110%;
   background: #fff;
 }
 
 .grid-line.vertical {
   stroke-width: 1;
-  stroke: #d0d0d0;
+  stroke: #d9d9d9;
 }
 
 .grid-line.horizontal {

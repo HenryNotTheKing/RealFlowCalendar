@@ -1,5 +1,6 @@
 <template>
   <div class="sub-left-panel"></div>
+  <div class="divideline_left"></div>
   <div class="sub-center-panel" >
     <DayAxis :timeAxisWidth="timeAxisWidth"/>
     <div class="canvas-container-with-axis"> 
@@ -7,10 +8,11 @@
         <TimeAxis />
       </div>
       <div class="CalendarDisplay" ref="parentRef">
-        <CalendarDisplay :canvasWidth="parentWidth" :canvasHeight="parentHeight" /> 
+          <CalendarDisplay :canvasWidth="parentWidth" :canvasHeight="parentHeight" />
       </div>
     </div>
   </div>
+  <div class="divideline_right"></div>
   <div class="sub-right-panel"></div>
 </template>
 

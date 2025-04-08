@@ -13,8 +13,13 @@
   padding: 0px;
 }
 
-.left-bar,
-.right-bar {
+.right-bar{
+  width: 320px;
+  height: inherit;
+  background-color: white; 
+}
+.left-bar {
+  height: inherit;
   width: 320px;
   background-color: #f7f7f7; 
 }
@@ -36,11 +41,18 @@
   top: 90px;
   width: 100vw; 
   height: calc(100vh - 90px);
-  flex:1
+  flex:1;
+  overflow: visible;
 }
 
-.left-panel,
-.right-panel {
+.right-panel{
+  width: 320px;
+  background-color: white; 
+  flex-shrink: 0;
+  display: flex; 
+  justify-content: center;
+}
+.left-panel {
   width: 320px;
   background-color: #f7f7f7; 
   flex-shrink: 0;
@@ -54,8 +66,15 @@
   background-color: white;
 }
 
-.sub-left-panel,
 .sub-right-panel {
+  width: 320px;
+  background-color:  white; 
+  flex-shrink: 0;
+  display: flex; 
+  justify-content: center;
+}
+
+.sub-left-panel {
   width: 320px;
   background-color: #f7f7f7; 
   flex-shrink: 0;
@@ -66,6 +85,7 @@
 .sub-center-panel {
   height: 100%;
   flex: 1;
+  overflow: visible;
 }
 
 .button-bar {
@@ -82,7 +102,7 @@
   width: 44px;
   height: 44px;
   background-color: #cacaca20;
-  box-shadow: 0px 4px 4px 0px rgba(159, 159, 159, 0.558);
+  box-shadow: 0px 2px 4px 0px rgba(159, 159, 159, 0.558);
   border-radius: 6px;
   display: flex; /* 使用 Flexbox 布局 */
   align-items: center;
@@ -107,32 +127,25 @@
 
 /* 整个滚动条轨道 */
 ::-webkit-scrollbar {
-  width: 10px;  /* 垂直滚动条宽度 */
-  height: 10px; /* 水平滚动条高度 */
-  background: #f5f5f5;
+  width: 0px;  /* 垂直滚动条宽度 */
+  height: 0px; /* 水平滚动条高度 */
+  background: transparent;
 }
-
-/* 滚动条滑块 */
-::-webkit-scrollbar-thumb {
-  background: #dfdfdf;
-  border-radius: 5px;
-  border: 2px solid transparent;
-  background-clip: content-box;
+.divideline_left {
+  position: fixed;  /* 改为固定定位 */
+  top: 0;
+  left: 320px;
+  height: 100vh;    /* 使用视窗高度 */
+  width: 1px;
+  background-color: #F0F0F0;
+  z-index: 999;     /* 确保在最顶层 */
 }
-
-
-/* 激活状态（点击拖动时） */
-::-webkit-scrollbar-thumb:active,
-::-webkit-scrollbar-thumb:hover {
-  background: #b4b4b4;
-}
-
-/* 滚动条轨道背景 */
-::-webkit-scrollbar-track {
-  background: white;
-}
-
-/* 滚动条角落区域 */
-::-webkit-scrollbar-corner {
-  background: white;
+.divideline_right {
+  position: fixed;  /* 改为固定定位 */
+  top: 0;
+  right: 320px;
+  height: 100vh;    /* 使用视窗高度 */
+  width: 1px;
+  background-color: #F0F0F0;
+  z-index: 999;     /* 确保在最顶层 */
 }

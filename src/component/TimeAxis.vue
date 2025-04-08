@@ -65,14 +65,15 @@ const currentTimeStyle = computed(() => ({
   transform: translateY(-50%);
   text-align: right;
   right: 4px;
-  height: 24px;  /* 线的高度 */
+  height: 20px;  
   width: 36px;
   border-radius: 4px;
-  background-color: red;  /* 线的颜色 */
+  background-color: #ff4444;  /* 线的颜色 */
   font-size: 12px;
   color: white;
   display: flex;
   align-items: center;    /* 垂直居中 */
   justify-content: center; /* 水平居中 */
+  user-select: none;
 }
 </style>
