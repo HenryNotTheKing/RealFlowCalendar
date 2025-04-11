@@ -1,35 +1,18 @@
 <template>
   <div class="chen-calendar">
-    <!-- 折叠头部 -->
-    <div class="calendar-collapse-header" @click.stop="toggleCollapse">
-      <img
-        src="../assets/Icons/icon-collapse-on.svg"
-        v-if="!isCollapsed"
-        alt="collapse-on"
-        class="icon"
-      />
-      <img
-        src="../assets/Icons/icon-collapse-off.svg"
-        v-else
-        alt="collapse-off"
-        class="icon"
-      />
-      <span>日历（好直白）</span>
-    </div>
-
     <!-- 日历内容 -->
-    <div v-if="!isCollapsed" class="calendar-content">
+    <div class="calendar-content">
       <!-- 日历头部 -->
-      <div id="calendar-header">
-        <div class="month-text">{{ monthText }}</div>
+      <div class="calendar-header">
         <div class="month-switcher">
-          <div class="arrow-container arrow-left" @click="toPrevMonth">
+          <div class="arrow-container arrow-eft" @click="toPrevMonth">
             <img
               src="../assets/Icons/icon-arrow-left.svg"
               alt="arrow-left"
               class="icon"
             />
           </div>
+          <div class="month-text">{{ monthText }}</div> 
           <div class="arrow-container arrow-right" @click="toNextMonth">
             <img
               src="../assets/Icons/icon-arrow-right.svg"
@@ -76,8 +59,8 @@
 </template>
 
 <script>
+import { DateDisplay } from "../stores/DateDisplay.js";
 const DayMS = 24 * 60 * 60 * 1000;
-
 export default {
   name: "ChenCalendar",
   data() {
@@ -87,13 +70,14 @@ export default {
       isCollapsed: false, // 控制折叠状态
       weekList: ["周日", "周一", "周二", "周三", "周四", "周五", "周六"],
       monthDateList: [],
+      useDateDisplay: DateDisplay(),
     };
   },
   computed: {
     monthText() {
       const year = this.todayDate.getFullYear();
-      const month = (this.todayDate.getMonth() + 1).toString().padStart(2, "0");
-      return `${year}年 ${month}月`;
+      const month = (this.todayDate.getMonth() + 1).toString();
+      return `${year} 年 ${month} 月`;
     },
     dateList() {
       return this.monthDateList;
@@ -137,6 +121,7 @@ export default {
         this.toNextMonth();
       }
       this.selectedDate = date.date;
+      this.useDateDisplay.selectedDate = this.selectedDate;
       this.updateMonthDateList();
     },
     isEqualDate(d1, d2) {
@@ -246,8 +231,9 @@ export default {
 <style scoped>
 /* 全局容器样式 */
 .chen-calendar {
+  height: 250px;
   width: 100%;
-  max-width: 270px;
+  max-width: 250px;
   margin: 0 auto;
   font-family: Avenir, Helvetica, Arial, sans-serif;
   color: #2c3e50;
@@ -255,27 +241,6 @@ export default {
   flex-direction: column;
   gap:0px;
   user-select: none;
-}
-
-/* 折叠头部样式 */
-.calendar-collapse-header {
-  height: 34px;
-  padding-left: 0px;
-  padding-right: 0px;
-  display: flex;
-  align-items: center;
-  border-radius: 4px;
-  cursor: pointer;
-  margin-top: 24px; /* 上间距，看着调一调 */
-  margin-bottom: 0px; /* 下间距 */
-  &:hover {
-    background-color: #efefef;
-  }
-  span {
-    margin-left: 8px;
-    font-size: 14px;
-    color: #646464;
-  }
 }
 
 /* 图标样式 */
@@ -286,16 +251,22 @@ export default {
 }
 
 /* 日历头部样式 */
-#calendar-header {
+.calendar-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 0px;
+  margin-top: 16px;
 }
 
 .month-text {
   font-size: 16px;
   font-weight: bold;
+  color: #000000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
 }
 
 .month-switcher {
@@ -312,6 +283,7 @@ export default {
   border-radius: 8px;
   cursor: pointer;
   transition: background-color 0.3s ease;
+  transform: translateY(1px);
   &:hover {
     background-color: #efefef;
   }
@@ -348,19 +320,32 @@ export default {
   display: flex;
   flex-wrap: wrap;
   width: 100%;
+  justify-content: center;
 }
 
 .calendar-date {
   width: calc(100% / 7);
-  height: 34px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
+  border-radius: 8px;
   cursor: pointer;
-  &:hover {
-    background-color: #efefef;
-  }
+  position: relative;
+  z-index: 1;
+}
+
+.calendar-date:hover::before {
+  content: '';
+  position: absolute;
+  width: 28px;  /* 自定义宽度 */
+  height: 28px; /* 自定义高度 */
+  background: #dedede;
+  border-radius: 8px;
+  top: 50%;
+  left: 50%;
+  z-index: -1;
+  transform: translate(-50%, -50%);
 }
 
 .date-text {
@@ -369,15 +354,22 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
+  border-radius: 8px;
+  font-size: 16px;
 }
 
 .date-selected {
+  height: 28px;
+  width: 28px;
   background-color: #f04842 !important;
   color: #ffffff !important;
+  margin-top:2px;
+  margin-bottom:2px;
 }
 
 .date-today {
+  height: 28px;
+  width: 28px;
   border: 2px solid #f04842;
   color: #f04842;
 }
@@ -387,8 +379,8 @@ export default {
 }
 
 .date-prev-month {
-  color: #999999;
-  cursor: not-allowed;
+  color: #ccc;
+  cursor: pointer;
 }
 
 .date-next-month {

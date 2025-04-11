@@ -22,7 +22,7 @@ const createWindow = () => {
       symbolColor: "3D3D3D"
       // 控制按钮颜色
     },
-    minWidth: 850,
+    minWidth: 1e3,
     minHeight: 600,
     useContentSize: true
   });

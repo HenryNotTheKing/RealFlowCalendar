@@ -1,0 +1,243 @@
+<template>
+    <div class="event-form">
+        <el-form :model="form" label-width="auto" style="max-width: 300px">
+            <el-form-item label="类别" label-position="top">
+                <el-select v-model="form.category" placeholder="请选择" class="custom-select">
+                    <el-option v-for="item in options" :key="item.value" :label="item.label" :value="item.value"
+                        class="custom-option" />
+                </el-select>
+            </el-form-item>
+            <el-form-item label="标题" label-position="top">
+                <el-input v-model="form.title" />
+            </el-form-item>
+            <el-form-item label="时间">
+                <el-col :span="8">
+                    <el-time-picker v-model="form.start" format="HH:mm" :show-seconds="false" placeholder="开始"
+                        style="width: 100%; font-size: 13px" />
+                </el-col>
+                <el-col :span="2" class="text-center">
+                    <div style="display: flex; justify-content: center; color: #3d3d3d">-</div>
+                </el-col>
+                <el-col :span="8">
+                    <el-time-picker v-model="form.end" format="HH:mm" :show-seconds="false"
+                        :disabled-seconds="disabledSeconds" placeholder="结束" style="width: 100%; font-size: 13px" />
+                </el-col>
+            </el-form-item>
+            <el-form-item>
+                <el-col :span="10">
+                    <el-form-item label="全天">
+                        <el-switch v-model="form.allDay" />
+                    </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item label="重复">
+                        <el-switch v-model="form.repeat" @change="handleRepeatSwitch" :disabled="showRepeatDialog" />
+                    </el-form-item>
+                </el-col>
+            </el-form-item>
+            <el-form-item label="地点">
+                <el-input v-model="form.location" />
+            </el-form-item>
+            <el-form-item label="描述">
+                <el-input v-model="form.description" type="textarea" />
+            </el-form-item>
+        </el-form>
+        <el-dialog v-model="showRepeatDialog" title="设置重复规则" width="600px" destroy-on-close :append-to-body="true"
+            :modal-append-to-body="true">
+            <el-form :model="recurrenceForm" label-width="100px">
+                <!-- 重复类型 -->
+                <el-form-item label="重复类型">
+                    <el-select v-model="recurrenceForm.type">
+                        <el-option v-for="item in repeatTypes" :key="item.value" :label="item.label"
+                            :value="item.value" />
+                    </el-select>
+                </el-form-item>
+
+                <!-- 间隔周期 -->
+                <el-form-item label="每间隔">
+                    <el-input-number v-model="recurrenceForm.interval" :min="1" :max="365" />
+                    <span class="ml-2">{{ intervalUnit }}</span>
+                </el-form-item>
+
+                <!-- 周重复时的星期选择 -->
+                <el-form-item v-if="recurrenceForm.type === 'weekly'" label="重复星期">
+                    <el-checkbox-group v-model="recurrenceForm.daysOfWeek">
+                        <el-checkbox v-for="(day, index) in weekDays" :key="index" :label="index">
+                            {{ day }}
+                        </el-checkbox>
+                    </el-checkbox-group>
+                </el-form-item>
+
+                <!-- 结束条件 -->
+                <el-form-item label="结束条件">
+                    <el-radio-group v-model="recurrenceForm.endCondition">
+                        <el-radio label="never">永不</el-radio>
+                        <el-radio label="count">重复次数</el-radio>
+                        <el-radio label="date">结束日期</el-radio>
+                    </el-radio-group>
+                </el-form-item>
+
+                <!-- 次数输入 -->
+                <el-form-item v-if="recurrenceForm.endCondition === 'count'" label="重复次数">
+                    <el-input-number v-model="recurrenceForm.occurrences" :min="1" :max="999" />
+                </el-form-item>
+
+                <!-- 结束日期 -->
+                <el-form-item v-if="recurrenceForm.endCondition === 'date'" label="结束日期">
+                    <el-date-picker v-model="recurrenceForm.endDate" type="date" value-format="YYYY-MM-DD"
+                        placeholder="选择结束日期" />
+                </el-form-item>
+            </el-form>
+
+            <template #footer>
+                <el-button @click="showRepeatDialog = false">取消</el-button>
+                <el-button type="primary" @click="confirmRepeat">确定</el-button>
+            </template>
+        </el-dialog>
+    </div>
+</template>
+
+<script setup>
+import { reactive, ref, computed } from 'vue'
+import { ElMessageBox } from 'element-plus'
+
+const options = [
+    { value: 'option1', label: 'Option 1' },
+    { value: 'option2', label: 'Option 2' },
+    { value: 'option3', label: 'Option 3' },
+]
+
+const form = reactive({
+    title: '',
+    category: '',
+    start: '',
+    end: '',
+    date: '',
+    allDay: false,
+    location: '',
+    description: '',
+    repeat: false,
+    recurrence: {
+        type: '',
+        interval: 1,
+        daysOfWeek: [],
+        endCondition: '',
+        occurrences: 1,
+        endDate: ''
+    },
+})
+
+const recurrenceForm = reactive({
+    type: 'daily',
+    interval: 1,
+    daysOfWeek: [],
+    endCondition: 'never',
+    occurrences: 1,
+    endDate: ''
+})
+
+const showRepeatDialog = ref(false)
+
+// 可用选项
+const repeatTypes = [
+    { value: 'daily', label: '每天' },
+    { value: 'weekly', label: '每周' },
+    { value: 'monthly', label: '每月' },
+    { value: 'yearly', label: '每年' }
+]
+
+const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+
+// 计算间隔单位
+const intervalUnit = computed(() => {
+    const map = {
+        daily: '天',
+        weekly: '周',
+        monthly: '月',
+        yearly: '年'
+    }
+    return map[recurrenceForm.type]
+})
+
+// 开关处理
+const handleRepeatSwitch = async (val) => {
+    if (val) {
+        // 开启重复逻辑
+        showRepeatDialog.value = true
+        Object.assign(recurrenceForm, {
+            type: 'daily',
+            interval: 1,
+            daysOfWeek: [],
+            endCondition: 'never',
+            occurrences: 1,
+            endDate: ''
+        })
+    } else {
+        // 关闭重复时触发二次确认
+        try {
+            await ElMessageBox.confirm(
+                '关闭重复将重置该日程的重复设置，是否继续？',
+                '确认关闭',
+                {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                }
+            )
+
+            // 用户确认关闭
+            form.repeat = false
+            form.recurrence = null
+            Object.assign(recurrenceForm, {
+                type: 'daily',
+                interval: 1,
+                daysOfWeek: [],
+                endCondition: 'never',
+                occurrences: 1,
+                endDate: ''
+            })
+        } catch (error) {
+            // 用户取消操作，恢复开关状态
+            form.repeat = true
+        }
+    }
+}
+
+// 确认设置
+const confirmRepeat = () => {
+    // 构建 recurrence 对象
+    const rule = { ...recurrenceForm }
+
+    // 清理不需要的字段
+    if (rule.endCondition !== 'count') delete rule.occurrences
+    if (rule.endCondition !== 'date') delete rule.endDate
+    if (rule.type !== 'weekly') delete rule.daysOfWeek
+
+    form.recurrence = rule
+    showRepeatDialog.value = false
+}
+
+</script>
+
+
+<style scoped>
+* {
+    user-select: none;
+}
+
+.event-form {
+    display: flex;
+    width: 90%;
+    height: inherit;
+    transform: translateY(50px);
+}
+
+.ml-2 {
+    margin-left: 8px;
+}
+
+.custom-select :deep(.el-input__inner) {
+    border-color: #000000;
+    border-radius: 8px;
+    background-color: #fff5f5;
+}
+</style>

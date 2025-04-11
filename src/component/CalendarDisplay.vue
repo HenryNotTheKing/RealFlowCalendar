@@ -525,32 +525,32 @@ onUnmounted(() => {
 }
 
 .preview-rect {
-  fill: #E1F9FF;
+  fill: #cde6ff;
 
 }
 
 .final-rect {
-  fill: #E1F9FF;
+  fill: #cde6ff;
   stroke-width: 1;
   transition: all 10ms linear;
   will-change: transform;
 }
 .rect-stripe {
-  fill: #32A5E4;
+  fill: #409EFF;
   stroke: none;
   rx: 8;
   ry: 8;
 
 }
 .final-rect.dragging {
-  fill:#32A5E4;
-  filter: drop-shadow(0 6px 6px rgba(13, 110, 253, 0.4));
+  fill:#409EFF;
+  filter: drop-shadow(0 3px 3px #2A598A);
 }
 
 .final-rect.selected {
-  fill:#32A5E4;
+  fill:#409EFF;
   stroke-width: 2;
-  filter: drop-shadow(0 3px 3px rgba(13, 110, 253, 0.4));
+  filter: drop-shadow(0 3px 3px #2A598A);
 }
 .hide-stripe {
   display: none;
