@@ -62,7 +62,7 @@
               }"
               @mousemove="handleRectHover($event, index)"
               @mouseleave="resetRectHoverCursor"
-              @mousedown="startInteraction($event, index)"
+              @mousedown="startInteraction($event)"
               @click="selectRect(index)"
           />
           <path
@@ -89,19 +89,35 @@
   </div>
 </template>
 
-<script setup>
-import { ref, computed, onMounted, onUnmounted, defineProps, watch } from 'vue';
+<script lang="ts" setup>
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { CanvasParams } from "../stores/CanvasParams.js";
+import { DateDisplay } from "../stores/DateDisplay.js";
+import { ScheduleStore } from '../stores/ScheduleStore'
+import { EventData } from '../stores/EventData.js';
+
+interface Rect {
+  column: number;
+  startRow: number;
+  rowCount: number;
+}
+
+// 容器引用
+const container = ref<HTMLElement|null>(null);
 
 // 画布配置
 const useCanvasParams = CanvasParams();
+const useDateDisplay = DateDisplay();
+const useScheduleStore = ScheduleStore();
+const useEventData = EventData();
+
 const props = defineProps({
   canvasWidth: { type: Number, default: 1200 },
   canvasHeight: { type: Number, default: 960 }
 });
 const canvasWidth = computed(() => props.canvasWidth );
-const rowHeight = ref(20);
-const containerHeight = ref(0);
+const rowHeight = ref<number>(20);
+const containerHeight = ref<number>(0);
 const minRowHeight = computed(() => containerHeight.value / 96);
 const canvasHeight = computed(() => Math.max(
   rowHeight.value * 96,  // 原有行高计算
@@ -111,7 +127,7 @@ const maxRowHeight = 50;
 const colWidth = computed(() => canvasWidth.value / 7);
 
 //矩形圆角绘制
-function getStripePath(rect) {
+function getStripePath(rect: any) {
       const pos = this.getRectPosition(rect);
       const x = pos.x;
       const y = pos.y;
@@ -137,13 +153,8 @@ onMounted(() => {
   if (container.value) {
       resizeObserver.observe(container.value);
   }
-  const handleScroll = () => {
-    if (container.value) {
-      useCanvasParams.scrollTop = container.value.scrollTop;
-    }
-  };
   
-  container.value.addEventListener('scroll', handleScroll);
+  container.value?.addEventListener('scroll', handleScroll);
 
   window.addEventListener('keydown', handleKeyDown);
 });
@@ -157,10 +168,12 @@ watch(containerHeight, (newHeight) => {
   }
 });
 
+const handleScroll = () => {
+    if (container.value) {
+      useCanvasParams.scrollTop = container.value.scrollTop;
+    }
+  };
 
-
-// 容器引用
-const container = ref(null);
 
 // 网格系统
 const verticalTicks = computed(() =>
@@ -171,22 +184,25 @@ const horizontalTicks = computed(() =>
 );
 
 // 交互状态
-const interactionMode = ref(null); // null | 'draw' | 'drag' | 'resize'
+const interactionMode = ref<'draw' | 'drag' | 'resize' | null>(null);
 const activeRectIndex = ref(-1);
-const resizeEdge = ref(null); // 'top' | 'bottom'
+const resizeEdge = ref< 'top' | 'bottom' | null >(null);
 const startRow = ref(0);
 const currentRow = ref(0);
 const currentColumn = ref(0);
-const rects = ref([]);
+const rects = ref<Rect[]>([]);
 const dragOffsetX = ref(0);
 const dragOffsetY = ref(0);
 const selectedRectIndex = ref(-1);//用于处理拖动
 
+const clickStartPosition = ref({ x: 0, y: 0 });// 鼠标点击事件处理
+
 // 有效性检查
 const validHeight = computed(() => Math.abs(currentRow.value - startRow.value) > 0);
 
-// 坐标对齐函数
-const alignToGrid = (clientY) => {
+// 修改坐标对齐函数
+const alignToGrid = (clientY: number) => {
+  if (!container.value) return 0;
   const rect = container.value.getBoundingClientRect();
   const rawY = clientY - rect.top + container.value.scrollTop;
   return Math.min(95, Math.max(0, Math.floor(
@@ -194,7 +210,8 @@ const alignToGrid = (clientY) => {
   )));
 };
 
-const alignToColumn = (clientX) => {
+const alignToColumn = (clientX: number) => {
+  if (!container.value) return 0;
   const rect = container.value.getBoundingClientRect();
   const rawX = clientX - rect.left + container.value.scrollLeft;
   return Math.min(6, Math.max(0, Math.round(
@@ -202,17 +219,38 @@ const alignToColumn = (clientX) => {
   )));
 };
 
-const getRectPosition = (rect) => ({
+const getRectPosition = (rect: Rect) => ({
   x: rect.column * colWidth.value,
   width: colWidth.value*0.9,
   y: rect.startRow * rowHeight.value,
   height: rect.rowCount * rowHeight.value
 });
 
-// 矩形悬停处理
-function handleRectHover(event, index) {
-  if (interactionMode.value) return;
 
+const getRectTimeRange = (rect: Rect) => {
+  const startTime = useDateDisplay.selectedDateArr[rect.column];
+  
+  // 计算起始时间（基准日期 + 起始行数 * 15分钟）
+  startTime.setHours(0, rect.startRow * 15, 0, 0);
+  
+  // 计算结束时间（起始时间 + 行数 * 15分钟）
+  const endTime = new Date(startTime);
+  endTime.setMinutes(endTime.getMinutes() + rect.rowCount * 15);
+
+  return {
+        start: startTime,
+        end: endTime,
+        title: '新事件',
+  };
+}
+
+const getRectPositionFromTimeRange = (Event: any) => {
+  
+}
+// 矩形悬停处理
+function handleRectHover(event: { clientY: number; }, index: string | number) {
+  if (interactionMode.value) return;
+  if (!container.value) return;
   const rect = container.value.getBoundingClientRect();
   const mouseY = event.clientY - rect.top + container.value.scrollTop;
   const targetRect = rects.value[index];
@@ -236,20 +274,24 @@ function handleRectHover(event, index) {
 
 // 重置矩形悬停时的鼠标样式
 function resetRectHoverCursor() {
+  if (!container.value) return;
   if (!interactionMode.value) {
       container.value.style.cursor = 'default';
   }
 }
 
 // 交互流程控制
-function startInteraction(event) {
+function startInteraction(event: { ctrlKey: any; clientX: any; clientY: any; }) {
+  if (!container.value) return;
   if (event.ctrlKey) return;
-
+  
   const mouseX = event.clientX;
   const mouseY = event.clientY;
   const rect = container.value.getBoundingClientRect();
   const rawX = mouseX - rect.left + container.value.scrollLeft;
   const rawY = mouseY - rect.top + container.value.scrollTop;
+
+  clickStartPosition.value = { x: mouseX, y: mouseY };
 
   // 检测边缘调整
   for (let i = 0; i < rects.value.length; i++) {
@@ -260,6 +302,7 @@ function startInteraction(event) {
 
       if (rawX >= rectX && rawX <= rectX + colWidth.value) {
           if (Math.abs(rawY - rectTop) < 8) {
+              useScheduleStore.isShowEventForm = true;
               interactionMode.value = 'resize';
               activeRectIndex.value = i;
               resizeEdge.value = 'top';
@@ -269,6 +312,7 @@ function startInteraction(event) {
           }
 
           if (Math.abs(rawY - rectBottom) < 8) {
+              useScheduleStore.isShowEventForm = true;
               interactionMode.value = 'resize';
               activeRectIndex.value = i;
               resizeEdge.value = 'bottom';
@@ -290,6 +334,7 @@ function startInteraction(event) {
           rawY >= rectY &&
           rawY <= rectY + r.rowCount * rowHeight.value
       ) {
+          useScheduleStore.isShowEventForm = true;
           interactionMode.value = 'drag';
           activeRectIndex.value = i;
           dragOffsetX.value = rawX - rectX;
@@ -298,6 +343,7 @@ function startInteraction(event) {
           return;
       }
   }
+
 
   // 开始新绘制
   interactionMode.value = 'draw';
@@ -309,7 +355,7 @@ function startInteraction(event) {
   selectedRectIndex.value = -1;
 }
 
-function checkOverlap(rectA, rectB) {
+function checkOverlap(rectA: Rect, rectB: Rect) {
   if (rectA.column !== rectB.column) return false; // 不同列不重叠
   const aStart = rectA.startRow;
   const aEnd = rectA.startRow + rectA.rowCount - 1;
@@ -318,13 +364,14 @@ function checkOverlap(rectA, rectB) {
   return aStart <= bEnd && bStart <= aEnd;
 }
 
-function handleMove(event) {
+function handleMove(event: { clientX: number; clientY: number; }) {
+  if (!container.value) return;
   const rect = container.value.getBoundingClientRect();
-  const rawX = event.clientX - rect.left + container.value.scrollLeft;
   const rawY = event.clientY - rect.top + container.value.scrollTop;
 
   switch (interactionMode.value) {
       case 'draw': {
+          useScheduleStore.isShowEventForm = true;
           const newCurrentRow = alignToGrid(event.clientY);
           const previewStartRow = Math.min(startRow.value, newCurrentRow);
           const previewRowCount = Math.abs(newCurrentRow - startRow.value);
@@ -334,15 +381,16 @@ function handleMove(event) {
               column: currentColumn.value,
               startRow: previewStartRow,
               rowCount: previewRowCount,
-              width: colWidth.value
           };
-
+          
+          
           // 检查是否与现有矩形重叠
           const isOverlapping = rects.value.some(r => checkOverlap(previewRect, r));
 
           // 仅在无重叠时更新当前行
           if (!isOverlapping || previewRowCount === 0) {
               currentRow.value = newCurrentRow;
+              useEventData.newEvent = {...useEventData.newEvent, ...getRectTimeRange(previewRect)};
           }
           break;
       }
@@ -362,7 +410,7 @@ function handleMove(event) {
               column: newColumn,
               startRow: newStartRow
           };
-
+          
           // 检测与其他矩形的冲突（排除自己）
           const isOverlapping = rects.value.some((r, index) =>
               index !== activeRectIndex.value && checkOverlap(tempRect, r)
@@ -370,6 +418,7 @@ function handleMove(event) {
 
           if (!isOverlapping) {
               rects.value[activeRectIndex.value] = tempRect;
+              useEventData.newEvent = {...useEventData.newEvent, ...getRectTimeRange(tempRect)};
           }
           break;
       }
@@ -412,20 +461,32 @@ function handleMove(event) {
 
           if (!isOverlapping) {
               rects.value[activeRectIndex.value] = tempRect;
+              useEventData.newEvent = {...useEventData.newEvent, ...getRectTimeRange(tempRect)};
           }
           break;
       }
   }
 }
 
-function stopInteraction() {
-  if (interactionMode.value === 'draw' && validHeight.value) {
+function stopInteraction(event: {clientX: any; clientY: any}) {
+  if (interactionMode.value === 'draw') {
+    const moveDistance = Math.sqrt(
+      Math.pow(event.clientX - clickStartPosition.value.x, 2) +
+      Math.pow(event.clientY - clickStartPosition.value.y, 2)
+    );
+
+    if (moveDistance < 5 && !validHeight.value) {
+      console.log('canceldraw');
+      useScheduleStore.isShowEventForm = false;
+      selectedRectIndex.value = -1;
+    }
+    else if (validHeight.value) {
       rects.value.push({
           column: currentColumn.value, // 存储列索引
           startRow: Math.min(startRow.value, currentRow.value),
           rowCount: Math.abs(currentRow.value - startRow.value)
           // 移除 width 字段，通过计算属性获取
-      });
+      });}
   }
 
   resetInteraction();
@@ -447,6 +508,7 @@ function cancelInteraction() {
 }
 
 function resetInteraction() {
+  if (!container.value) return;
   interactionMode.value = null;
   activeRectIndex.value = -1;
   resizeEdge.value = null;
@@ -454,7 +516,7 @@ function resetInteraction() {
 }
 
 // 缩放处理
-function handleWheel(event) {
+function handleWheel(event: { ctrlKey: any; preventDefault: () => void; deltaY: number; }) {
   if (event.ctrlKey) {
       event.preventDefault();
       if (interactionMode.value) return;
@@ -470,12 +532,12 @@ function handleWheel(event) {
 }
 
 // 选择矩形
-function selectRect(index) {
+function selectRect(index: number) {
   selectedRectIndex.value = index;
 }
 
 // 处理按键事件
-function handleKeyDown(event) {
+function handleKeyDown(event: { key: string; }) {
   if (event.key === 'Backspace' && selectedRectIndex.value!== -1) {
       const newRects = rects.value.filter((_, i) => i!== selectedRectIndex.value);
       rects.value = newRects;

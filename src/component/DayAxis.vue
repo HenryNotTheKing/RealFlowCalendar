@@ -3,7 +3,7 @@
     <div class="day-label" v-for="(day, index) in days" :key="index" :style="labelStyle()">
       <span style="display: inline-block">{{ day }}</span>
       <div class="date-badge" :class="{ 'current-day': isCurrentDay(index) }">
-        {{ useDateDisplay.selectedDateArr[index].day }}
+        {{ useDateDisplay.selectedDateArr[index].getDate()}}
       </div>
     </div>
   </div>
@@ -12,7 +12,7 @@
 
   
 <script setup>
-import { defineProps,computed } from 'vue';
+import { computed } from 'vue';
 import { CanvasParams } from "../stores/CanvasParams.js";
 import { DateDisplay } from "../stores/DateDisplay.js";
 
@@ -38,7 +38,7 @@ const labelStyle = () => ({
 const isCurrentDay = (index) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  return today.getTime() === useDateDisplay.selectedDateArr[index].timestamp;
+  return today.getTime() === useDateDisplay.selectedDateArr[index].getTime();
 };
 </script>
   

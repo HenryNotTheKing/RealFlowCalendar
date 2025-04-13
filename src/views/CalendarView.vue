@@ -27,9 +27,9 @@
       </div>
     </div>
   </div>
-  <div class="divideline_right"></div>
-  <div class="sub-right-panel">
-    <EventForm />
+  <div class="sub-right-panel" >
+    <div class="divideline_right"></div>
+    <EventForm v-if="useScheduleStore.isShowEventForm"/>
   </div>
 </template>
 
@@ -38,10 +38,11 @@ import CalendarDisplay from '../component/CalendarDisplay.vue';
 import DayAxis from '../component/DayAxis.vue';
 import TimeAxis from '../component/TimeAxis.vue';
 import Calendar from '../component/Calendar.vue';
-import EventForm from '../component/EventForm.vue';
+import EventForm from '../component/eventForm.vue';
 import { ref, onMounted} from 'vue';
 import { DateDisplay } from '../stores/DateDisplay.js';
-
+import { ScheduleStore } from '../stores/ScheduleStore'
+const useScheduleStore = ScheduleStore();
 const useDateDisplay = DateDisplay();
 
 function formatMonth(date){
@@ -54,6 +55,7 @@ function formatMonth(date){
 }
 const parentRef = ref(null);
 const parentWidth = ref(0);
+const parentHeight = ref(0);
 
 const timeAxisRef = ref(null);
 const timeAxisWidth = ref(0);

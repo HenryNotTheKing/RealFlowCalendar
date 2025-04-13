@@ -17,10 +17,9 @@ const selectedDateArr = computed(() => {
     const date = new Date(monday);
     date.setDate(monday.getDate() + i);
     date.setHours(0, 0, 0, 0); // 设置为午夜时间
-    return {
-      day: date.getDate(),
-      timestamp: date.getTime()
-    };
+    return date
+      // day: date.getDate(),
+      // timestamp: date.getTime()
   });
 });
 function toToday() {
