@@ -218,7 +218,6 @@ const submitEvent = async () => {
     try {
         const weeklyMeeting: ScheduleEvent = {
             id: '1234567890',
-            index: 1,
             title: '每周项目例会',
             category: '工作',
             start: new Date('2025-04-15T09:00:00'),
@@ -270,6 +269,17 @@ const durationText = computed(() => {
     const minutes = diffMinutes % 60
     return `${hours}小时${minutes}分钟`
 })
+// 在 setup 作用域中添加以下代码
+watch(() => useEventData.currentEvent, (newVal) => {
+  if (useEventData.selectedIndex !== -1 && useEventData.currentWeekEvents[useEventData.selectedIndex]) {
+    // 使用 Object.assign 保持响应性
+    //Object.assign(useEventData.currentWeekEvents[useEventData.selectedIndex], newVal);
+    
+    // 或者使用 splice 触发响应式更新（二选一）
+    useEventData.currentWeekEvents.splice(useEventData.selectedIndex, 1, { ...newVal });
+  }
+}, { deep: true, immediate: true });
+
 </script>
 
 

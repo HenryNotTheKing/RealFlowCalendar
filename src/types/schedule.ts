@@ -9,7 +9,6 @@ export interface RecurrenceRule {
   
 export interface ScheduleEvent {
     id: string | number;
-    index: number;
     title: string;
     category: string;
     start: Date;
@@ -19,4 +18,10 @@ export interface ScheduleEvent {
     description: string;
     repeat: boolean;
     recurrence: RecurrenceRule;
+}
+
+export interface Rect {
+  column: number;
+  startRow: number;
+  rowCount: number;
 }

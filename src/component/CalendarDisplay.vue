@@ -46,7 +46,7 @@
 
           <!-- 已绘制矩形 -->
           <rect
-              v-for="(rect, index) in rects"
+              v-for="(rect, index) in useEventData.currentRects"
               :key="'rect-' + index"
               :x="getRectPosition(rect).x"
               :y="getRectPosition(rect).y"
@@ -58,7 +58,7 @@
               :class="{
                   dragging: interactionMode === 'drag' && activeRectIndex === index,
                   resizing: interactionMode === 'resize',
-                  selected: selectedRectIndex === index
+                  selected: useEventData.selectedIndex === index
               }"
               @mousemove="handleRectHover($event, index)"
               @mouseleave="resetRectHoverCursor"
@@ -66,7 +66,7 @@
               @click="selectRect(index)"
           />
           <path
-              v-for="(rect, index) in rects"
+              v-for="(rect, index) in useEventData.currentRects"
               :class="{ 'hide-stripe': interactionMode === 'drag' && activeRectIndex === index }"
               :key="'stripe-' + index"
               :d="getStripePath(rect)"
@@ -95,13 +95,7 @@ import { CanvasParams } from "../stores/CanvasParams.js";
 import { DateDisplay } from "../stores/DateDisplay.js";
 import { ScheduleStore } from '../stores/ScheduleStore'
 import { EventData } from '../stores/EventData.js';
-import { ScheduleEvent } from '../types/schedule.js';
-
-interface Rect {
-  column: number;
-  startRow: number;
-  rowCount: number;
-}
+import { ScheduleEvent, Rect } from '../types/schedule.js';
 
 // 容器引用
 const container = ref<HTMLElement|null>(null);
@@ -191,10 +185,8 @@ const resizeEdge = ref< 'top' | 'bottom' | null >(null);
 const startRow = ref(0);
 const currentRow = ref(0);
 const currentColumn = ref(0);
-const rects = ref<Rect[]>([]);
 const dragOffsetX = ref(0);
 const dragOffsetY = ref(0);
-const selectedRectIndex = ref(-1);//用于处理拖动
 
 const clickStartPosition = ref({ x: 0, y: 0 });// 鼠标点击事件处理
 
@@ -275,7 +267,7 @@ function handleRectHover(event: { clientY: number; }, index: number) {
   if (!container.value) return;
   const rect = container.value.getBoundingClientRect();
   const mouseY = event.clientY - rect.top + container.value.scrollTop;
-  const targetRect = rects.value[index];
+  const targetRect = useEventData.currentRects[index];
 
   const rectTop = targetRect.startRow * rowHeight.value;
   const rectBottom = rectTop + targetRect.rowCount * rowHeight.value;
@@ -320,8 +312,8 @@ function startInteraction(event: { ctrlKey: any; clientX: any; clientY: any; }) 
   clickStartPosition.value = { x: mouseX, y: mouseY };
 
    // 修改边缘检测逻辑（仅记录索引，不立即进入 resize 模式）
-   for (let i = 0; i < rects.value.length; i++) {
-    const r = rects.value[i];
+   for (let i = 0; i < useEventData.currentRects.length; i++) {
+    const r = useEventData.currentRects[i];
     const rectX = r.column * colWidth.value;
     const rectTop = r.startRow * rowHeight.value;
     const rectBottom = rectTop + r.rowCount * rowHeight.value;
@@ -344,8 +336,8 @@ function startInteraction(event: { ctrlKey: any; clientX: any; clientY: any; }) 
   }
 
   // 检测矩形拖拽
-  for (let i = 0; i < rects.value.length; i++) {
-    const r = rects.value[i];
+  for (let i = 0; i < useEventData.currentRects.length; i++) {
+    const r = useEventData.currentRects[i];
     const rectX = r.column * colWidth.value;
     const rectY = r.startRow * rowHeight.value;
     if (
@@ -370,7 +362,7 @@ function startInteraction(event: { ctrlKey: any; clientX: any; clientY: any; }) 
   currentRow.value = startRow.value;
   container.value.style.cursor = 'crosshair';
   // 点击空白处取消选中
-  selectedRectIndex.value = -1;
+  useEventData.selectedIndex = -1;
 }
 
 function checkOverlap(rectA: Rect, rectB: Rect) {
@@ -388,35 +380,36 @@ function handleMove(event: { clientX: number; clientY: number; }) {
   const rawY = event.clientY - rect.top + container.value.scrollTop;
 
   if (activeRectIndex.value !== -1 && !interactionMode.value) {
-    const moveDistance = Math.sqrt(
-      Math.pow(event.clientX - clickStartPosition.value.x, 2) +
-      Math.pow(event.clientY - clickStartPosition.value.y, 2)
-    );
-
-    if (moveDistance > dragThreshold.value) {
-      interactionMode.value = 'drag';
-      useScheduleStore.isShowEventForm = true;
-      container.value.style.cursor = 'move';
-    } else {
-      return; // 未达阈值保持原状
+    // 优先处理调整大小
+    if (resizeEdge.value) {
+        const moveDistance = Math.sqrt(
+            Math.pow(event.clientX - clickStartPosition.value.x, 2) +
+            Math.pow(event.clientY - clickStartPosition.value.y, 2)
+        );
+        
+        if (moveDistance > dragThreshold.value) {
+            interactionMode.value = 'resize';
+            useScheduleStore.isShowEventForm = true;
+            container.value.style.cursor = 'ns-resize';
+            return; // 进入调整模式后直接返回
+        }
     }
-  }
+    // 处理拖拽
+    else {
+        const moveDistance = Math.sqrt(
+            Math.pow(event.clientX - clickStartPosition.value.x, 2) +
+            Math.pow(event.clientY - clickStartPosition.value.y, 2)
+        );
 
-    // 新增调整大小激活判断
-  if (activeRectIndex.value !== -1 && resizeEdge.value && !interactionMode.value) {
-    const moveDistance = Math.sqrt(
-      Math.pow(event.clientX - clickStartPosition.value.x, 2) +
-      Math.pow(event.clientY - clickStartPosition.value.y, 2)
-    );
-
-  if (moveDistance > dragThreshold.value) {
-      interactionMode.value = 'resize';
-      useScheduleStore.isShowEventForm = true;
-      container.value.style.cursor = 'ns-resize';
-    } else {
-      return; // 未达阈值保持原状
+        if (moveDistance > dragThreshold.value) {
+            interactionMode.value = 'drag';
+            useScheduleStore.isShowEventForm = true;
+            container.value.style.cursor = 'move';
+        }
     }
-  }
+    
+    if (!interactionMode.value) return; // 未触发任何模式时提前返回
+}
 
   switch (interactionMode.value) {
       case 'draw': {
@@ -434,7 +427,7 @@ function handleMove(event: { clientX: number; clientY: number; }) {
           
           
           // 检查是否与现有矩形重叠
-          const isOverlapping = rects.value.some(r => checkOverlap(previewRect, r));
+          const isOverlapping = useEventData.currentRects.some(r => checkOverlap(previewRect, r));
 
           // 仅在无重叠时更新当前行
           if (!isOverlapping || previewRowCount === 0) {
@@ -449,30 +442,30 @@ function handleMove(event: { clientX: number; clientY: number; }) {
 
           const newColumn = alignToColumn(targetX + colWidth.value / 2);
           const newStartRow = Math.min(
-              95 - rects.value[activeRectIndex.value].rowCount + 1,
+              95 - useEventData.currentRects[activeRectIndex.value].rowCount + 1,
               Math.max(0, Math.floor(targetY / rowHeight.value))
           );
 
           // 生成临时矩形
           const tempRect = {
-              ...rects.value[activeRectIndex.value],
+              ...useEventData.currentRects[activeRectIndex.value],
               column: newColumn,
               startRow: newStartRow
           };
           
           // 检测与其他矩形的冲突（排除自己）
-          const isOverlapping = rects.value.some((r, index) =>
+          const isOverlapping = useEventData.currentRects.some((r, index) =>
               index !== activeRectIndex.value && checkOverlap(tempRect, r)
           );
 
           if (!isOverlapping) {
-              rects.value[activeRectIndex.value] = tempRect;
+              useEventData.currentRects[activeRectIndex.value] = tempRect;
               useEventData.currentEvent = {...useEventData.currentEvent, ...getRectTimeRange(tempRect)};
           }
           break;
       }
       case 'resize': {
-          const targetRect = rects.value[activeRectIndex.value];
+          const targetRect = useEventData.currentRects[activeRectIndex.value];
           const currentGridRow = alignToGrid(event.clientY);
           let newStart = targetRect.startRow;
           let newRowCount = targetRect.rowCount;
@@ -504,12 +497,12 @@ function handleMove(event: { clientX: number; clientY: number; }) {
           };
 
           // 检测与其他矩形的冲突（排除自己）
-          const isOverlapping = rects.value.some((r, index) =>
+          const isOverlapping = useEventData.currentRects.some((r, index) =>
               index !== activeRectIndex.value && checkOverlap(tempRect, r)
           );
 
           if (!isOverlapping) {
-              rects.value[activeRectIndex.value] = tempRect;
+              useEventData.currentRects[activeRectIndex.value] = tempRect;
               useEventData.currentEvent = {...useEventData.currentEvent, ...getRectTimeRange(tempRect)};
           }
           break;
@@ -526,10 +519,10 @@ function stopInteraction(event: {clientX: any; clientY: any}) {
 
     if (moveDistance < 5 && !validHeight.value) {
       useScheduleStore.isShowEventForm = false;
-      selectedRectIndex.value = -1;
+      useEventData.selectedIndex = -1;
     }
     else if (validHeight.value) {
-      const newIndex = rects.value.push({
+      const newIndex = useEventData.currentRects.push({
         column: currentColumn.value,
         startRow: Math.min(startRow.value, currentRow.value),
         rowCount: Math.abs(currentRow.value - startRow.value)
@@ -551,7 +544,6 @@ function stopInteraction(event: {clientX: any; clientY: any}) {
       // 使用新数据更新对应事件
       useEventData.currentWeekEvents.splice(index, 1, {
         ...useEventData.currentEvent,
-        index: index // 保持索引不变
       });
     }
   }
@@ -561,14 +553,14 @@ function stopInteraction(event: {clientX: any; clientY: any}) {
 
 function cancelInteraction() {
   if (interactionMode.value === 'draw' && validHeight.value) {
-      rects.value.push({
+      useEventData.currentRects.push({
           column: currentColumn.value,
           startRow: Math.min(startRow.value, currentRow.value),
           rowCount: Math.abs(currentRow.value - startRow.value)
       });
   } else if (interactionMode.value === 'resize') {
       // 强制提交当前调整状态（已通过 handleMove 实时更新）
-      rects.value = [...rects.value]; // 触发数组更新
+      useEventData.currentRects = [...useEventData.currentRects]; // 触发数组更新
   }
 
   resetInteraction();
@@ -600,16 +592,17 @@ function handleWheel(event: { ctrlKey: any; preventDefault: () => void; deltaY: 
 
 // 选择矩形
 function selectRect(index: number) {
+  useScheduleStore.isShowEventForm = true;
   useEventData.currentEvent = useEventData.currentWeekEvents[index];
-  selectedRectIndex.value = index;
+  useEventData.selectedIndex = index;
 }
 
 // 处理按键事件
 function handleKeyDown(event: { key: string; }) {
-  if (event.key === 'Backspace' && selectedRectIndex.value!== -1) {
-      const index = selectedRectIndex.value;
+  if (event.key === 'Backspace' && useEventData.selectedIndex!== -1) {
+      const index = useEventData.selectedIndex;
       // 同步删除
-      rects.value = rects.value.filter((_, i) => i !== index);
+      useEventData.currentRects = useEventData.currentRects.filter((_, i) => i !== index);
       useEventData.currentWeekEvents = useEventData.currentWeekEvents.filter((_, i) => i !== index);
       
       // 重置后续元素的索引
@@ -618,7 +611,7 @@ function handleKeyDown(event: { key: string; }) {
           index: i // 更新为新的数组索引
       }));
       
-      selectedRectIndex.value = -1;
+      useEventData.selectedIndex = -1;
   }
 }
 
