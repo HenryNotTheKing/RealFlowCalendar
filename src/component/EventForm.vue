@@ -1,26 +1,26 @@
 <template>
     <div class="event-form">
-        <el-form :model="form" label-width="auto" style="max-width: 300px">
+        <el-form :model="useEventData.currentEvent" label-width="auto" style="max-width: 300px">
             <el-form-item label="类别" label-position="top">
-                <el-select v-model="form.category" placeholder="请选择" class="custom-select">
+                <el-select v-model="useEventData.currentEvent.category" placeholder="请选择" class="custom-select">
                     <el-option v-for="item in options" :key="item.value" :label="item.label" :value="item.value"
                         class="custom-option" />
                 </el-select>
             </el-form-item>
             <el-form-item label="标题" label-position="top">
-                <el-input v-model="form.title" />
+                <el-input v-model="useEventData.currentEvent.title" />
             </el-form-item>
             <el-form-item label="时间">
                 <el-col :span="8">
-                    <el-time-picker v-model="form.start" format="HH:mm" :show-seconds="false" placeholder="开始"
-                        style="width: 100%; font-size: 13px" />
+                    <el-time-picker v-model="useEventData.currentEvent.start" format="HH:mm" :show-seconds="false" placeholder="开始"
+                        style="width: 100%; font-size: 13px" :clearable="false" :key="useEventData.currentEvent.start?.getTime()"/>
                 </el-col>
                 <el-col :span="2" class="text-center">
                     <div style="display: flex; justify-content: center; color: #3d3d3d">-</div>
                 </el-col>
                 <el-col :span="8">
-                    <el-time-picker v-model="form.end" format="HH:mm" :show-seconds="false" placeholder="结束"
-                        style="width: 100%; font-size: 13px" />
+                    <el-time-picker v-model="useEventData.currentEvent.end" format="HH:mm" :show-seconds="false" placeholder="结束"
+                        style="width: 100%; font-size: 13px" :clearable="false"/>
                 </el-col>
                 <el-col :span="24">
                     <el-form-item style="margin-left: 0">
@@ -31,8 +31,8 @@
                 </el-col>
                 <el-col :span="24">
                     <el-form-item style="margin-left: 0">
-                        <el-text type="info" v-if="form.start">
-                            {{ dayjs(form.start).format('YYYY年MM月DD日') }}
+                        <el-text type="info" v-if="useEventData.currentEvent.start">
+                            {{ dayjs(useEventData.currentEvent.start).format('YYYY年MM月DD日') }}
                         </el-text>
                     </el-form-item>
                 </el-col>
@@ -40,28 +40,28 @@
             <el-form-item>
                 <el-col :span="10">
                     <el-form-item label="全天">
-                        <el-switch v-model="form.allDay" @change="fetchEvents" />
+                        <el-switch v-model="useEventData.currentEvent.allDay" @change="fetchEvents" />
                     </el-form-item>
                 </el-col>
                 <el-col :span="8">
                     <el-form-item label="重复">
-                        <el-switch v-model="form.repeat" @change="handleRepeatSwitch" :disabled="showRepeatDialog" />
+                        <el-switch v-model="useEventData.currentEvent.repeat" @change="handleRepeatSwitch" :disabled="showRepeatDialog" />
                     </el-form-item>
                 </el-col>
             </el-form-item>
             <el-form-item label="地点">
-                <el-input v-model="form.location" />
+                <el-input v-model="useEventData.currentEvent.location" />
             </el-form-item>
             <el-form-item label="描述">
-                <el-input v-model="form.description" type="textarea" />
+                <el-input v-model="useEventData.currentEvent.description" type="textarea" />
             </el-form-item>
         </el-form>
         <el-dialog v-model="showRepeatDialog" title="设置重复规则" width="600px" destroy-on-close :append-to-body="true"
             :modal-append-to-body="true">
-            <el-form :model="form.recurrence" label-width="100px">
+            <el-form :model="useEventData.currentEvent.recurrence" label-width="100px">
                 <!-- 重复类型 -->
                 <el-form-item label="重复类型">
-                    <el-select v-model="form.recurrence.type">
+                    <el-select v-model="useEventData.currentEvent.recurrence.type">
                         <el-option v-for="item in repeatTypes" :key="item.value" :label="item.label"
                             :value="item.value" />
                     </el-select>
@@ -69,13 +69,13 @@
 
                 <!-- 间隔周期 -->
                 <el-form-item label="每间隔">
-                    <el-input-number v-model="form.recurrence.interval" :min="1" :max="365" />
+                    <el-input-number v-model="useEventData.currentEvent.recurrence.interval" :min="1" :max="365" />
                     <span class="ml-2">{{ intervalUnit }}</span>
                 </el-form-item>
 
                 <!-- 周重复时的星期选择 -->
-                <el-form-item v-if="form.recurrence.type === 'weekly'" label="重复星期">
-                    <el-checkbox-group v-model="form.recurrence.daysOfWeek">
+                <el-form-item v-if="useEventData.currentEvent.recurrence.type === 'weekly'" label="重复星期">
+                    <el-checkbox-group v-model="useEventData.currentEvent.recurrence.daysOfWeek">
                         <el-checkbox v-for="(day, index) in weekDays" :key="index" :label="index">
                             {{ day }}
                         </el-checkbox>
@@ -84,7 +84,7 @@
 
                 <!-- 结束条件 -->
                 <el-form-item label="结束条件">
-                    <el-radio-group v-model="form.recurrence.endCondition">
+                    <el-radio-group v-model="useEventData.currentEvent.recurrence.endCondition">
                         <el-radio label="never">永不</el-radio>
                         <el-radio label="occurrences">重复次数</el-radio>
                         <el-radio label="untilDate">结束日期</el-radio>
@@ -92,13 +92,13 @@
                 </el-form-item>
 
                 <!-- 次数输入 -->
-                <el-form-item v-if="form.recurrence.endCondition === 'occurrences'" label="重复次数">
-                    <el-input-number v-model="form.recurrence.occurrences" :min="1" :max="999" />
+                <el-form-item v-if="useEventData.currentEvent.recurrence.endCondition === 'occurrences'" label="重复次数">
+                    <el-input-number v-model="useEventData.currentEvent.recurrence.occurrences" :min="1" :max="999" />
                 </el-form-item>
 
                 <!-- 结束日期 -->
-                <el-form-item v-if="form.recurrence.endCondition === 'untilDate'" label="结束日期">
-                    <el-date-picker v-model="form.recurrence.endDate" type="date" value-format="YYYY-MM-DD"
+                <el-form-item v-if="useEventData.currentEvent.recurrence.endCondition === 'untilDate'" label="结束日期">
+                    <el-date-picker v-model="useEventData.currentEvent.recurrence.endDate" type="date" value-format="YYYY-MM-DD"
                         placeholder="选择结束日期" />
                 </el-form-item>
             </el-form>
@@ -112,11 +112,14 @@
 </template>
 
 <script lang="ts" setup>
-import { toRef, ref, computed } from 'vue'
+import { toRef, ref, computed, watch } from 'vue'
 import dayjs from 'dayjs'
 import { ElMessageBox } from 'element-plus'
 import { ScheduleStore } from '../stores/ScheduleStore'
 import { EventData } from '../stores/EventData';
+
+
+
 const useEventData = EventData();
 const useScheduleStore = ScheduleStore();
 const options = [
@@ -128,10 +131,8 @@ const options = [
 import type { ScheduleEvent, RecurrenceRule } from '../types/schedule';
 
 // 修复 1: 明确表单类型
-const form = toRef(useEventData, 'newEvent')
 
 const showRepeatDialog = ref(false)
-
 
 // 可用选项
 const repeatTypes = [
@@ -151,7 +152,7 @@ const intervalUnit = computed(() => {
         monthly: '月',
         yearly: '年'
     }
-    return map[form.value.recurrence.type]
+    return map[useEventData.currentEvent.recurrence.type]
 })
 
 // 开关处理
@@ -159,7 +160,7 @@ const handleRepeatSwitch = async (val: boolean) => {
     if (val) {
         // 开启重复逻辑
         showRepeatDialog.value = true
-        Object.assign(form.value.recurrence, {
+        Object.assign(useEventData.currentEvent.recurrence, {
             type: 'daily',
             interval: 1,
             daysOfWeek: [],
@@ -180,8 +181,8 @@ const handleRepeatSwitch = async (val: boolean) => {
             )
 
             // 用户确认关闭
-            form.value.repeat = false
-            Object.assign(form.value.recurrence, {
+            useEventData.currentEvent.repeat = false
+            Object.assign(useEventData.currentEvent.recurrence, {
                 type: 'daily',
                 interval: 1,
                 daysOfWeek: [],
@@ -191,7 +192,7 @@ const handleRepeatSwitch = async (val: boolean) => {
             })
         } catch (error) {
             // 用户取消操作，恢复开关状态
-            form.value.repeat = true
+            useEventData.currentEvent.repeat = true
         }
     }
 }
@@ -199,15 +200,15 @@ const handleRepeatSwitch = async (val: boolean) => {
 // 确认设置
 const confirmRepeat = () => {
     const rule: Partial<RecurrenceRule> = {
-        ...form.value.recurrence,
-        daysOfWeek: form.value.recurrence.daysOfWeek as number[]
+        ...useEventData.currentEvent.recurrence,
+        daysOfWeek: useEventData.currentEvent.recurrence.daysOfWeek as number[]
     };
 
     if (rule.endCondition !== 'occurrences') delete rule.occurrences;
     if (rule.endCondition !== 'untilDate') delete rule.endDate;
     if (rule.type !== 'weekly') delete rule.daysOfWeek;
 
-    form.value.recurrence = rule as RecurrenceRule;
+    useEventData.currentEvent.recurrence = rule as RecurrenceRule;
     showRepeatDialog.value = false;
 }
 
@@ -258,13 +259,13 @@ const fetchEvents = async () => {
     // } catch (error) {
     //     console.error('获取事件失败:', error);
     // }
-    console.log(form.value);
+    console.log(useEventData.currentWeekEvents);
 };
 
 const durationText = computed(() => {
-    if (!form.value.start || !form.value.end) return '--'
+    if (!useEventData.currentEvent.start || !useEventData.currentEvent.end) return ' '
 
-    const diffMinutes = dayjs(form.value.end).diff(form.value.start, 'minute')
+    const diffMinutes = dayjs(useEventData.currentEvent.end).diff(useEventData.currentEvent.start, 'minute')
     const hours = Math.floor(diffMinutes / 60)
     const minutes = diffMinutes % 60
     return `${hours}小时${minutes}分钟`

@@ -95,6 +95,7 @@ import { CanvasParams } from "../stores/CanvasParams.js";
 import { DateDisplay } from "../stores/DateDisplay.js";
 import { ScheduleStore } from '../stores/ScheduleStore'
 import { EventData } from '../stores/EventData.js';
+import { ScheduleEvent } from '../types/schedule.js';
 
 interface Rect {
   column: number;
@@ -228,7 +229,7 @@ const getRectPosition = (rect: Rect) => ({
 
 
 const getRectTimeRange = (rect: Rect) => {
-  const startTime = useDateDisplay.selectedDateArr[rect.column];
+  const startTime = new Date(useDateDisplay.selectedDateArr[rect.column]);
   
   // 计算起始时间（基准日期 + 起始行数 * 15分钟）
   startTime.setHours(0, rect.startRow * 15, 0, 0);
@@ -244,11 +245,32 @@ const getRectTimeRange = (rect: Rect) => {
   };
 }
 
-const getRectPositionFromTimeRange = (Event: any) => {
+function getRectPositionFromTimeRange(Event: ScheduleEvent) {
+  const startDate = new Date(Event.start);
+  const endDate = new Date(Event.end);
   
+  // 查找对应的日期列
+  const column = useDateDisplay.selectedDateArr.findIndex(date => 
+    date.getDate() === startDate.getDate() &&
+    date.getMonth() === startDate.getMonth()
+  );
+
+  // 计算起始行数（每15分钟一格）
+  const startMinutes = startDate.getHours() * 60 + startDate.getMinutes();
+  const startRow = Math.floor(startMinutes / 15);
+
+  // 计算持续行数（向上取整保证完整显示）
+  const durationMinutes = (endDate.getTime() - startDate.getTime()) / (1000 * 60);
+  const rowCount = Math.ceil(durationMinutes / 15);
+
+  return {
+    column: Math.max(0, column), // 默认第0列
+    startRow: Math.min(95, startRow), // 限制在0-95行范围
+    rowCount: Math.min(96 - startRow, rowCount) // 最大到当天结束
+  };
 }
 // 矩形悬停处理
-function handleRectHover(event: { clientY: number; }, index: string | number) {
+function handleRectHover(event: { clientY: number; }, index: number) {
   if (interactionMode.value) return;
   if (!container.value) return;
   const rect = container.value.getBoundingClientRect();
@@ -281,6 +303,10 @@ function resetRectHoverCursor() {
 }
 
 // 交互流程控制
+// 在交互状态部分新增移动阈值
+const dragThreshold = computed(() => Math.min(rowHeight.value, colWidth.value) * 0.8);
+
+// 修改 startInteraction 函数中的拖拽检测部分
 function startInteraction(event: { ctrlKey: any; clientX: any; clientY: any; }) {
   if (!container.value) return;
   if (event.ctrlKey) return;
@@ -293,60 +319,52 @@ function startInteraction(event: { ctrlKey: any; clientX: any; clientY: any; }) 
 
   clickStartPosition.value = { x: mouseX, y: mouseY };
 
-  // 检测边缘调整
-  for (let i = 0; i < rects.value.length; i++) {
-      const r = rects.value[i];
-      const rectX = r.column * colWidth.value;
-      const rectTop = r.startRow * rowHeight.value;
-      const rectBottom = rectTop + r.rowCount * rowHeight.value;
+   // 修改边缘检测逻辑（仅记录索引，不立即进入 resize 模式）
+   for (let i = 0; i < rects.value.length; i++) {
+    const r = rects.value[i];
+    const rectX = r.column * colWidth.value;
+    const rectTop = r.startRow * rowHeight.value;
+    const rectBottom = rectTop + r.rowCount * rowHeight.value;
 
-      if (rawX >= rectX && rawX <= rectX + colWidth.value) {
-          if (Math.abs(rawY - rectTop) < 8) {
-              useScheduleStore.isShowEventForm = true;
-              interactionMode.value = 'resize';
-              activeRectIndex.value = i;
-              resizeEdge.value = 'top';
-              startRow.value = r.startRow;
-              container.value.style.cursor = 'ns-resize';
-              return;
-          }
-
-          if (Math.abs(rawY - rectBottom) < 8) {
-              useScheduleStore.isShowEventForm = true;
-              interactionMode.value = 'resize';
-              activeRectIndex.value = i;
-              resizeEdge.value = 'bottom';
-              startRow.value = r.startRow;
-              container.value.style.cursor = 'ns-resize';
-              return;
-          }
+    if (rawX >= rectX && rawX <= rectX + colWidth.value) {
+      if (Math.abs(rawY - rectTop) < 8) {
+        activeRectIndex.value = i;
+        resizeEdge.value = 'top';
+        startRow.value = r.startRow;
+        return; // 仅记录状态，等待移动判断
       }
+
+      if (Math.abs(rawY - rectBottom) < 8) {
+        activeRectIndex.value = i;
+        resizeEdge.value = 'bottom';
+        startRow.value = r.startRow;
+        return; // 仅记录状态，等待移动判断
+      }
+    }
   }
 
   // 检测矩形拖拽
   for (let i = 0; i < rects.value.length; i++) {
-      const r = rects.value[i];
-      const rectX = r.column * colWidth.value;
-      const rectY = r.startRow * rowHeight.value;
-      if (
-          rawX >= rectX &&
-          rawX <= rectX + colWidth.value &&
-          rawY >= rectY &&
-          rawY <= rectY + r.rowCount * rowHeight.value
-      ) {
-          useScheduleStore.isShowEventForm = true;
-          interactionMode.value = 'drag';
-          activeRectIndex.value = i;
-          dragOffsetX.value = rawX - rectX;
-          dragOffsetY.value = rawY - rectY;
-          container.value.style.cursor = 'move';
-          return;
-      }
+    const r = rects.value[i];
+    const rectX = r.column * colWidth.value;
+    const rectY = r.startRow * rowHeight.value;
+    if (
+      rawX >= rectX &&
+      rawX <= rectX + colWidth.value &&
+      rawY >= rectY &&
+      rawY <= rectY + r.rowCount * rowHeight.value
+    ) {
+      activeRectIndex.value = i;
+      dragOffsetX.value = rawX - rectX;
+      dragOffsetY.value = rawY - rectY;
+      return; // 仅记录索引，等待后续移动判断
+    }
   }
 
 
   // 开始新绘制
   interactionMode.value = 'draw';
+  console.log('开始绘制');
   currentColumn.value = alignToColumn(mouseX);
   startRow.value = alignToGrid(mouseY);
   currentRow.value = startRow.value;
@@ -369,6 +387,37 @@ function handleMove(event: { clientX: number; clientY: number; }) {
   const rect = container.value.getBoundingClientRect();
   const rawY = event.clientY - rect.top + container.value.scrollTop;
 
+  if (activeRectIndex.value !== -1 && !interactionMode.value) {
+    const moveDistance = Math.sqrt(
+      Math.pow(event.clientX - clickStartPosition.value.x, 2) +
+      Math.pow(event.clientY - clickStartPosition.value.y, 2)
+    );
+
+    if (moveDistance > dragThreshold.value) {
+      interactionMode.value = 'drag';
+      useScheduleStore.isShowEventForm = true;
+      container.value.style.cursor = 'move';
+    } else {
+      return; // 未达阈值保持原状
+    }
+  }
+
+    // 新增调整大小激活判断
+  if (activeRectIndex.value !== -1 && resizeEdge.value && !interactionMode.value) {
+    const moveDistance = Math.sqrt(
+      Math.pow(event.clientX - clickStartPosition.value.x, 2) +
+      Math.pow(event.clientY - clickStartPosition.value.y, 2)
+    );
+
+  if (moveDistance > dragThreshold.value) {
+      interactionMode.value = 'resize';
+      useScheduleStore.isShowEventForm = true;
+      container.value.style.cursor = 'ns-resize';
+    } else {
+      return; // 未达阈值保持原状
+    }
+  }
+
   switch (interactionMode.value) {
       case 'draw': {
           useScheduleStore.isShowEventForm = true;
@@ -390,7 +439,7 @@ function handleMove(event: { clientX: number; clientY: number; }) {
           // 仅在无重叠时更新当前行
           if (!isOverlapping || previewRowCount === 0) {
               currentRow.value = newCurrentRow;
-              useEventData.newEvent = {...useEventData.newEvent, ...getRectTimeRange(previewRect)};
+              useEventData.currentEvent = {...useEventData.currentEvent, ...getRectTimeRange(previewRect)};
           }
           break;
       }
@@ -418,7 +467,7 @@ function handleMove(event: { clientX: number; clientY: number; }) {
 
           if (!isOverlapping) {
               rects.value[activeRectIndex.value] = tempRect;
-              useEventData.newEvent = {...useEventData.newEvent, ...getRectTimeRange(tempRect)};
+              useEventData.currentEvent = {...useEventData.currentEvent, ...getRectTimeRange(tempRect)};
           }
           break;
       }
@@ -461,7 +510,7 @@ function handleMove(event: { clientX: number; clientY: number; }) {
 
           if (!isOverlapping) {
               rects.value[activeRectIndex.value] = tempRect;
-              useEventData.newEvent = {...useEventData.newEvent, ...getRectTimeRange(tempRect)};
+              useEventData.currentEvent = {...useEventData.currentEvent, ...getRectTimeRange(tempRect)};
           }
           break;
       }
@@ -476,19 +525,37 @@ function stopInteraction(event: {clientX: any; clientY: any}) {
     );
 
     if (moveDistance < 5 && !validHeight.value) {
-      console.log('canceldraw');
       useScheduleStore.isShowEventForm = false;
       selectedRectIndex.value = -1;
     }
     else if (validHeight.value) {
-      rects.value.push({
-          column: currentColumn.value, // 存储列索引
-          startRow: Math.min(startRow.value, currentRow.value),
-          rowCount: Math.abs(currentRow.value - startRow.value)
-          // 移除 width 字段，通过计算属性获取
-      });}
-  }
+      const newIndex = rects.value.push({
+        column: currentColumn.value,
+        startRow: Math.min(startRow.value, currentRow.value),
+        rowCount: Math.abs(currentRow.value - startRow.value)
+      }) - 1; // push返回新长度，减1得到索引
 
+      // 给事件添加索引后存入
+      const currentEvent = {
+        ...useEventData.currentEvent,
+        index: newIndex // 注入当前矩形索引
+      };
+     useEventData.currentWeekEvents.push(currentEvent);
+    }
+  } 
+  // 新增拖拽和调整后的更新逻辑
+  else if (interactionMode.value === 'drag' || interactionMode.value === 'resize') {
+    const index = activeRectIndex.value;
+    console.log(interactionMode.value);
+    if (index !== -1) {
+      // 使用新数据更新对应事件
+      useEventData.currentWeekEvents.splice(index, 1, {
+        ...useEventData.currentEvent,
+        index: index // 保持索引不变
+      });
+    }
+  }
+  
   resetInteraction();
 }
 
@@ -533,14 +600,24 @@ function handleWheel(event: { ctrlKey: any; preventDefault: () => void; deltaY: 
 
 // 选择矩形
 function selectRect(index: number) {
+  useEventData.currentEvent = useEventData.currentWeekEvents[index];
   selectedRectIndex.value = index;
 }
 
 // 处理按键事件
 function handleKeyDown(event: { key: string; }) {
   if (event.key === 'Backspace' && selectedRectIndex.value!== -1) {
-      const newRects = rects.value.filter((_, i) => i!== selectedRectIndex.value);
-      rects.value = newRects;
+      const index = selectedRectIndex.value;
+      // 同步删除
+      rects.value = rects.value.filter((_, i) => i !== index);
+      useEventData.currentWeekEvents = useEventData.currentWeekEvents.filter((_, i) => i !== index);
+      
+      // 重置后续元素的索引
+      useEventData.currentWeekEvents = useEventData.currentWeekEvents.map((event, i) => ({
+          ...event,
+          index: i // 更新为新的数组索引
+      }));
+      
       selectedRectIndex.value = -1;
   }
 }

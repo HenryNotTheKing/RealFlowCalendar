@@ -6,8 +6,8 @@ import { ScheduleStore } from "./ScheduleStore";
 
 export const EventData = defineStore("eventData", () => {
     const useScheduleStore = ScheduleStore();
-
-    const newEvent = ref<ScheduleEvent>({
+    const currentWeekEvents = ref<ScheduleEvent[]>([]);
+    const currentEvent = ref<ScheduleEvent>({
         id: 0,
         index: 0,
         title: "",
@@ -27,6 +27,7 @@ export const EventData = defineStore("eventData", () => {
         }
     });
     return {
-        newEvent
+        currentWeekEvents,
+        currentEvent
     }
 })
