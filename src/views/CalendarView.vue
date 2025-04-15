@@ -33,19 +33,19 @@
   </div>
 </template>
 
-<script setup>
+<script lang='ts' setup>
 import CalendarDisplay from '../component/CalendarDisplay.vue';
 import DayAxis from '../component/DayAxis.vue';
 import TimeAxis from '../component/TimeAxis.vue';
 import Calendar from '../component/Calendar.vue';
-import EventForm from '../component/eventForm.vue';
+import EventForm from '../component/EventForm.vue';
 import { ref, onMounted} from 'vue';
 import { DateDisplay } from '../stores/DateDisplay.js';
 import { ScheduleStore } from '../stores/ScheduleStore'
 const useScheduleStore = ScheduleStore();
 const useDateDisplay = DateDisplay();
 
-function formatMonth(date){
+function formatMonth(date: { getMonth: () => any; }){
   const month = date.getMonth(); // 月份从0开始，所以需要加1
   const Months = [
     '一月', '二月', '三月', '四月', '五月', '六月',

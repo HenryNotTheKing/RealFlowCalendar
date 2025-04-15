@@ -1,17 +1,16 @@
 import { ScheduleEvent, Rect } from "../types/schedule";
 import { defineStore } from "pinia";
 import { ref } from "vue";
-import { ScheduleStore} from "./ScheduleStore";
-
-
+import { ScheduleStore } from "./ScheduleStore";
+   
+ 
 export const EventData = defineStore("eventData", () => {
-    const useScheduleStore = ScheduleStore();
 
     const currentRects = ref<Rect[]>([]);
     const selectedIndex = ref<number>(-1);
     const currentWeekEvents = ref<ScheduleEvent[]>([]);
     const currentEvent = ref<ScheduleEvent>({
-        id: 0,
+        id: "",
         title: "",
         start: new Date(),
         end: new Date(),

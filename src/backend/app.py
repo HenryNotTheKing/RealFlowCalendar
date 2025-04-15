@@ -94,13 +94,13 @@ class WeekEventsAPI(MethodView):
             start_str = request.args['start']
             end_str = request.args['end']
             
-            start_date = datetime.fromisoformat(start_str)
+            start_date = datetime.fromisoformat(start_str).astimezone(timezone.utc)
             if start_date.tzinfo is None:
                 start_date = start_date.replace(tzinfo=timezone.utc)
             else:
                 start_date = start_date.astimezone(timezone.utc)
             
-            end_date = datetime.fromisoformat(end_str)
+            end_date = datetime.fromisoformat(end_str).astimezone(timezone.utc)
             if end_date.tzinfo is None:
                 end_date = end_date.replace(tzinfo=timezone.utc)
             else:
@@ -174,13 +174,14 @@ class WeekEventsAPI(MethodView):
 class ScheduleEventAPI(MethodView):
     def post(self):
         data = request.json
-        # 转换为aware datetime并存储为naive UTC
-        start_time = datetime.fromisoformat(data['start']).astimezone(timezone.utc).replace(tzinfo=None)
-        end_time = datetime.fromisoformat(data['end']).astimezone(timezone.utc).replace(tzinfo=None)
+        # 添加时区安全解析
+        start_aware = datetime.fromisoformat(data['start']).astimezone(timezone.utc)
+        end_aware = datetime.fromisoformat(data['end']).astimezone(timezone.utc)
         
+        # 统一存储为 naive UTC 时间
         new_event = ScheduleEvent(
-            start=start_time,
-            end=end_time,
+            start=start_aware.replace(tzinfo=None),  
+            end=end_aware.replace(tzinfo=None),     
             title=data['title'],
             category=data.get('category'),
             all_day=data.get('allDay', False),
@@ -195,7 +196,9 @@ class ScheduleEventAPI(MethodView):
         return jsonify(serialize_event(new_event)), 201
     
     def put(self, event_id):
-        event = ScheduleEvent.query.get_or_404(event_id)
+        event = ScheduleEvent.query.get(event_id)
+        if not event:
+            return jsonify({'error': '事件不存在'}), 404
         data = request.json
         
         if not all([data.get('title'), data.get('start'), data.get('end')]):
@@ -219,14 +222,19 @@ class ScheduleEventAPI(MethodView):
         return jsonify(serialize_event(event))
 
     def delete(self, event_id):
-        event = ScheduleEvent.query.get_or_404(event_id)
+        # 添加调试日志
+        print(f'尝试删除事件 ID: {event_id}')
+        event = ScheduleEvent.query.get(event_id)
+        if not event:
+            return jsonify({'error': '事件不存在'}), 404
+            
         db.session.delete(event)
         db.session.commit()
         return '', 204
 
 # 注册路由
 app.add_url_rule('/api/events', view_func=ScheduleEventAPI.as_view('events_api'), methods=['POST'])
-app.add_url_rule('/api/events/<int:event_id>', view_func=ScheduleEventAPI.as_view('event_api'), methods=['PUT', 'DELETE'])
+app.add_url_rule('/api/events/<string:event_id>', view_func=ScheduleEventAPI.as_view('event_api'), methods=['PUT', 'DELETE'])
 app.add_url_rule('/api/events/week', view_func=WeekEventsAPI.as_view('week_events_api'), methods=['GET'])
 
 @app.cli.command()

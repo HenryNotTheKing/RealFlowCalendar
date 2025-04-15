@@ -1,9 +1,12 @@
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { defineStore } from 'pinia'
+import { ScheduleStore } from './ScheduleStore'
+import { EventData } from './EventData'
+
 
 export const DateDisplay = defineStore('DateDisplay', () => {
-const selectedDate = ref(new Date())
-const selectedDateArr = computed(() => {
+  const selectedDate = ref(new Date())
+  const selectedDateArr = computed(() => {
   const choosen = selectedDate.value;
   const currentDay = choosen.getDay(); // 0=周日, 1=周一...6=周六
 
@@ -35,5 +38,15 @@ function toLastWeek() {
   newDate.setDate(newDate.getDate() - 7);
   selectedDate.value = newDate;
 }
+
+watch(selectedDate, (newDate) => {
+  const useScheduleStore = ScheduleStore();
+  const useEventData = EventData();
+  useScheduleStore.updateWeekEvents(newDate);//矩形的更新也写好了
+  console.log('selectedDate changed:', newDate);
+  useEventData.selectedIndex = -1;
+  useScheduleStore.isShowEventForm = false;
+});
+
   return {selectedDate, selectedDateArr, toToday, toNextWeek, toLastWeek}
 })

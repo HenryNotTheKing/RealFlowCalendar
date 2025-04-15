@@ -1,3 +1,6 @@
+import { ScheduleEvent } from "../types/schedule";
+import { DateDisplay } from "../stores/DateDisplay";
+
 // 获取某一天的周范围（周一到周日）
 export const getWeekRange = (date: Date): [Date, Date] => {
   const day = date.getDay(); // 0 (周日) - 6 (周六)
@@ -63,4 +66,30 @@ export const getWeekKey = (date: Date): string => {
 //     end: new Date(occ.getTime() + (baseEvent.end.getTime() - baseEvent.start.getTime()))
 //   }));
 // }
+
+export function getRectPositionFromTimeRange(Event: ScheduleEvent) {
+  const useDateDisplay = DateDisplay();
+  const startDate = new Date(Event.start);
+  const endDate = new Date(Event.end);
+  
+  // 查找对应的日期列
+  const column = useDateDisplay.selectedDateArr.findIndex(date => 
+    date.getDate() === startDate.getDate() &&
+    date.getMonth() === startDate.getMonth()
+  );
+
+  // 计算起始行数（每15分钟一格）
+  const startMinutes = startDate.getHours() * 60 + startDate.getMinutes();
+  const startRow = Math.floor(startMinutes / 15);
+
+  // 计算持续行数（向上取整保证完整显示）
+  const durationMinutes = (endDate.getTime() - startDate.getTime()) / (1000 * 60);
+  const rowCount = durationMinutes / 15;
+
+  return {
+    column: Math.max(0, column), // 默认第0列
+    startRow: Math.min(95, startRow), // 限制在0-95行范围
+    rowCount: Math.min(96 - startRow, rowCount) // 最大到当天结束
+  };
+}
 

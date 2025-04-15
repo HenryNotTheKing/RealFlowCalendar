@@ -8,7 +8,7 @@ export interface RecurrenceRule {
   }
   
 export interface ScheduleEvent {
-    id: string | number;
+    id: string;
     title: string;
     category: string;
     start: Date;

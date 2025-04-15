@@ -13,7 +13,7 @@
             <el-form-item label="时间">
                 <el-col :span="8">
                     <el-time-picker v-model="useEventData.currentEvent.start" format="HH:mm" :show-seconds="false" placeholder="开始"
-                        style="width: 100%; font-size: 13px" :clearable="false" :key="useEventData.currentEvent.start?.getTime()"/>
+                        style="width: 100%; font-size: 13px" :clearable="false" />
                 </el-col>
                 <el-col :span="2" class="text-center">
                     <div style="display: flex; justify-content: center; color: #3d3d3d">-</div>
@@ -40,7 +40,7 @@
             <el-form-item>
                 <el-col :span="10">
                     <el-form-item label="全天">
-                        <el-switch v-model="useEventData.currentEvent.allDay" @change="fetchEvents" />
+                        <el-switch v-model="useEventData.currentEvent.allDay" @change="deleteEvent" />
                     </el-form-item>
                 </el-col>
                 <el-col :span="8">
@@ -112,11 +112,12 @@
 </template>
 
 <script lang="ts" setup>
-import { toRef, ref, computed, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import dayjs from 'dayjs'
 import { ElMessageBox } from 'element-plus'
 import { ScheduleStore } from '../stores/ScheduleStore'
 import { EventData } from '../stores/EventData';
+import { getRectPositionFromTimeRange } from '../utils/dataHelper';
 
 
 
@@ -243,23 +244,13 @@ const submitEvent = async () => {
 
 const deleteEvent = async () => {
     try {
-        await useScheduleStore.deleteEvent('5');
+        await useScheduleStore.deleteEvent('3328e07f-dba5-450d-a8f0-738b80cf9bfa');
         console.log('删除成功');
     } catch (error) {
         console.error('删除失败:', error);
     }
 };
 
-const fetchEvents = async () => {
-    // try {
-    //     const events = await useScheduleStore.fetchWeekEvents(new Date('2025-08-20'));
-    //     console.log('获取事件成功:', events);
-    //     console.log(typeof events);
-    // } catch (error) {
-    //     console.error('获取事件失败:', error);
-    // }
-    console.log(useEventData.currentWeekEvents);
-};
 
 const durationText = computed(() => {
     if (!useEventData.currentEvent.start || !useEventData.currentEvent.end) return ' '
@@ -269,14 +260,19 @@ const durationText = computed(() => {
     const minutes = diffMinutes % 60
     return `${hours}小时${minutes}分钟`
 })
-// 在 setup 作用域中添加以下代码
+
+
 watch(() => useEventData.currentEvent, (newVal) => {
   if (useEventData.selectedIndex !== -1 && useEventData.currentWeekEvents[useEventData.selectedIndex]) {
-    // 使用 Object.assign 保持响应性
-    //Object.assign(useEventData.currentWeekEvents[useEventData.selectedIndex], newVal);
-    
-    // 或者使用 splice 触发响应式更新（二选一）
+    newVal = {
+      ...newVal,
+      start: new Date(newVal.start),
+      end: new Date(newVal.end),
+    }
+    useEventData.currentRects[useEventData.selectedIndex] = getRectPositionFromTimeRange(newVal);
     useEventData.currentWeekEvents.splice(useEventData.selectedIndex, 1, { ...newVal });
+    useScheduleStore.updateEvent(newVal);
+
   }
 }, { deep: true, immediate: true });
 
