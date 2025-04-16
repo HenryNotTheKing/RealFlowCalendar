@@ -263,17 +263,23 @@ const durationText = computed(() => {
 
 
 watch(() => useEventData.currentEvent, (newVal) => {
-  if (useEventData.selectedIndex !== -1 && useEventData.currentWeekEvents[useEventData.selectedIndex]) {
-    newVal = {
-      ...newVal,
-      start: new Date(newVal.start),
-      end: new Date(newVal.end),
-    }
-    useEventData.currentRects[useEventData.selectedIndex] = getRectPositionFromTimeRange(newVal);
-    useEventData.currentWeekEvents.splice(useEventData.selectedIndex, 1, { ...newVal });
-    useScheduleStore.updateEvent(newVal);
+    if (useEventData.selectedIndex !== -1 && useEventData.currentWeekEvents[useEventData.selectedIndex]) {
+        newVal = {
+            ...newVal,
+            start: new Date(newVal.start),
+            end: new Date(newVal.end),
+        }
+        if (newVal.title === '') {
+            newVal = {
+                ...newVal,
+                title: '新事项'
+            }
+        }
+        useEventData.currentRects[useEventData.selectedIndex] = getRectPositionFromTimeRange(newVal);
+        useEventData.currentWeekEvents.splice(useEventData.selectedIndex, 1, { ...newVal });
+        useScheduleStore.updateEvent(newVal);
 
-  }
+    }
 }, { deep: true, immediate: true });
 
 </script>

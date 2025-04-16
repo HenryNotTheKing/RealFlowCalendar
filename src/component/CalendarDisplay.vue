@@ -65,6 +65,23 @@
               @mousedown="startInteraction($event)"
               @click="selectRect(index)"
           />
+          <foreignObject 
+             v-for="(rect, index) in useEventData.currentRects"
+            :key="'fo-'+index"
+            :x="getRectPosition(rect).x + 8"
+            :y="getRectPosition(rect).y"
+            :width="getRectPosition(rect).width"
+            :height="getRectPosition(rect).height"
+            pointer-events="none"
+            >
+            <div class="event-content">
+              <div class="event-title">{{ useEventData.currentWeekEvents[index]?.title }}</div>
+              <div class="event-time">
+                {{ dayjs(useEventData.currentWeekEvents[index]?.start).format('HH:mm') }} 
+                - {{ dayjs(useEventData.currentWeekEvents[index]?.end).format('HH:mm') }}
+              </div>
+            </div>
+          </foreignObject>
           <path
               v-for="(rect, index) in useEventData.currentRects"
               :class="{ 'hide-stripe': interactionMode === 'drag' && activeRectIndex === index }"
@@ -96,7 +113,7 @@ import { DateDisplay } from "../stores/DateDisplay.js";
 import { ScheduleStore } from '../stores/ScheduleStore'
 import { EventData } from '../stores/EventData.js';
 import { Rect } from '../types/schedule.js';
-import { id } from 'element-plus/es/locales.mjs';
+import dayjs from 'dayjs';
 
 // 容器引用
 const container = ref<HTMLElement|null>(null);
@@ -121,6 +138,7 @@ const canvasHeight = computed(() => Math.max(
 ));
 const maxRowHeight = 50;
 const colWidth = computed(() => canvasWidth.value / 7);
+
 
 //矩形圆角绘制
 function getStripePath(rect: any) {
@@ -190,7 +208,7 @@ const currentRow = ref(0);
 const currentColumn = ref(0);
 const dragOffsetX = ref(0);
 const dragOffsetY = ref(0);
-
+const isCancelInteraction = ref(false);
 const clickStartPosition = ref({ x: 0, y: 0 });// 鼠标点击事件处理
 
 // 有效性检查
@@ -236,7 +254,7 @@ const getRectTimeRange = (rect: Rect) => {
   return {
         start: startTime,
         end: endTime,
-        title: '新事件',
+        title: '新事项',
   };
 }
 
@@ -282,7 +300,7 @@ const dragThreshold = computed(() => Math.min(rowHeight.value, colWidth.value) *
 function startInteraction(event: { ctrlKey: any; clientX: any; clientY: any; }) {
   if (!container.value) return;
   if (event.ctrlKey) return;
-  
+  isCancelInteraction.value = false;
   const mouseX = event.clientX;
   const mouseY = event.clientY;
   const rect = container.value.getBoundingClientRect();
@@ -519,18 +537,29 @@ function stopInteraction(event: {clientX: any; clientY: any}) {
   } 
   // 新增拖拽和调整后的更新逻辑
   else if (interactionMode.value === 'drag' || interactionMode.value === 'resize') {
-    const index = activeRectIndex.value;
-    if (index !== -1) {
-      // 使用新数据更新对应事件
-      useEventData.currentWeekEvents.splice(index, 1, {
-        ...useEventData.currentEvent,
-      });
-      useScheduleStore.updateEvent(useEventData.currentEvent);
-    }
+  const index = activeRectIndex.value;
+  if (index !== -1) {
+    // 保留原始ID
+    const originalEvent = useEventData.currentWeekEvents[index];
+    
+    // 合并新旧数据
+    useEventData.currentWeekEvents.splice(index, 1, {
+      ...originalEvent,          // 保留原始属性
+      ...useEventData.currentEvent, // 应用新属性
+      id: originalEvent.id       // 确保ID不变
+    });
+    
+    useScheduleStore.updateEvent({
+      ...originalEvent,
+      ...useEventData.currentEvent,
+      id: originalEvent.id
+    });
   }
+}
   
   resetInteraction();
 }
+
 
 function cancelInteraction() {
   if (interactionMode.value === 'draw' && validHeight.value) {
@@ -552,7 +581,7 @@ function cancelInteraction() {
       useEventData.currentRects = [...useEventData.currentRects]; // 触发数组更新
       useEventData.currentWeekEvents = [...useEventData.currentWeekEvents]; // 触发数组更新
   }
-
+  isCancelInteraction.value = true;
   resetInteraction();
 }
 
@@ -589,9 +618,10 @@ function selectRect(index: number) {
 
 // 处理按键事件
 function handleKeyDown(event: { key: string; }) {
-  if (event.key === 'Backspace' && useEventData.selectedIndex!== -1) {
+  if (event.key === 'Backspace' && useEventData.selectedIndex!== -1 && !isCancelInteraction.value) {
       const targetIndex = useEventData.selectedIndex;
       // 添加防御性判断
+      console.log(clickStartPosition.value);
       if (targetIndex < 0 || targetIndex >= useEventData.currentWeekEvents.length) return;
 
       const deletedEvent = useEventData.currentWeekEvents[targetIndex];
@@ -688,5 +718,36 @@ onUnmounted(() => {
 
 .canvas-container[style*="cursor: ns-resize"] {
   cursor: ns-resize !important;
+}
+
+.event-content {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  box-sizing: border-box;
+  user-select: none;
+  pointer-events: none;
+  color:#15385f
+}
+
+.event-title {
+  font-size: 0.8em;
+  font-weight: 500;
+  line-height: 1.2;
+  color: inherit; 
+}
+
+.event-time {
+  font-size: 0.6em;
+  opacity: 0.8;
+  color: inherit; 
+}
+.final-rect.selected + foreignObject {
+  .event-title,
+  .event-time {
+    color: white !important;
+  }
 }
 </style>

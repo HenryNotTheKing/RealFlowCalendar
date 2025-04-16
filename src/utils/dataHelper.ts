@@ -1,6 +1,6 @@
 import { ScheduleEvent } from "../types/schedule";
 import { DateDisplay } from "../stores/DateDisplay";
-
+import { RRule } from "rrule";
 // 获取某一天的周范围（周一到周日）
 export const getWeekRange = (date: Date): [Date, Date] => {
   const day = date.getDay(); // 0 (周日) - 6 (周六)
@@ -41,31 +41,31 @@ export const getWeekKey = (date: Date): string => {
   return `${year}-W${week}`;
 };
 
-// 处理重复事件（使用rrule.js）
-// export function generateRecurringEvents(
-//   baseEvent: ScheduleEvent,
-//   startDate: Date,
-//   endDate: Date
-// ): ScheduleEvent[] {
-//   if (!baseEvent.recurrence) return [baseEvent];
-  
-//   const rule = new RRule({
-//     freq: RRule[baseEvent.recurrence.type.toUpperCase()],
-//     dtstart: baseEvent.start,
-//     until: baseEvent.recurrence.endDate ? 
-//       new Date(baseEvent.recurrence.endDate) : undefined,
-//     interval: baseEvent.recurrence.interval,
-//     count: baseEvent.recurrence.endCondition === 'occurrences' ?
-//       baseEvent.recurrence.occurrences : undefined,
-//     byweekday: baseEvent.recurrence.daysOfWeek
-//   });
 
-//   return rule.between(startDate, endDate, true).map(occ => ({
-//     ...baseEvent,
-//     start: occ,
-//     end: new Date(occ.getTime() + (baseEvent.end.getTime() - baseEvent.start.getTime()))
-//   }));
-// }
+export function generateRecurringEvents(
+  baseEvent: ScheduleEvent,
+  startDate: Date,
+  endDate: Date
+): ScheduleEvent[] {
+  if (!baseEvent.recurrence) return [baseEvent];
+  
+  const rule = new RRule({
+    freq: RRule[baseEvent.recurrence.type.toUpperCase()],
+    dtstart: baseEvent.start,
+    until: baseEvent.recurrence.endDate ? 
+      new Date(baseEvent.recurrence.endDate) : undefined,
+    interval: baseEvent.recurrence.interval,
+    count: baseEvent.recurrence.endCondition === 'occurrences' ?
+      baseEvent.recurrence.occurrences : undefined,
+    byweekday: baseEvent.recurrence.daysOfWeek
+  });
+
+  return rule.between(startDate, endDate, true).map(occ => ({
+    ...baseEvent,
+    start: occ,
+    end: new Date(occ.getTime() + (baseEvent.end.getTime() - baseEvent.start.getTime()))
+  }));
+}
 
 export function getRectPositionFromTimeRange(Event: ScheduleEvent) {
   const useDateDisplay = DateDisplay();
