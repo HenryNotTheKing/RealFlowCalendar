@@ -40,7 +40,7 @@
             <el-form-item>
                 <el-col :span="10">
                     <el-form-item label="全天">
-                        <el-switch v-model="useEventData.currentEvent.allDay" @change="deleteEvent" />
+                        <el-switch v-model="useEventData.currentEvent.allDay" @change='console.log(useEventData.currentWeekEvents)' />
                     </el-form-item>
                 </el-col>
                 <el-col :span="8">
@@ -58,24 +58,24 @@
         </el-form>
         <el-dialog v-model="showRepeatDialog" title="设置重复规则" width="600px" destroy-on-close :append-to-body="true"
             :modal-append-to-body="true">
-            <el-form :model="useEventData.currentEvent.recurrence" label-width="100px">
+            <el-form :model="dialogRecurrence" label-width="100px">
                 <!-- 重复类型 -->
                 <el-form-item label="重复类型">
-                    <el-select v-model="useEventData.currentEvent.recurrence.type">
-                        <el-option v-for="item in repeatTypes" :key="item.value" :label="item.label"
-                            :value="item.value" />
+                    <el-select v-model="dialogRecurrence.type" placeholder="请选择">
+                        <el-option v-for="(item, index) in repeatTypes" :key="index" 
+                         :label="item.label" :value="item.value"/>
                     </el-select>
                 </el-form-item>
 
                 <!-- 间隔周期 -->
                 <el-form-item label="每间隔">
-                    <el-input-number v-model="useEventData.currentEvent.recurrence.interval" :min="1" :max="365" />
+                    <el-input-number v-model="dialogRecurrence.interval" :min="1" :max="365" />
                     <span class="ml-2">{{ intervalUnit }}</span>
                 </el-form-item>
 
                 <!-- 周重复时的星期选择 -->
-                <el-form-item v-if="useEventData.currentEvent.recurrence.type === 'weekly'" label="重复星期">
-                    <el-checkbox-group v-model="useEventData.currentEvent.recurrence.daysOfWeek">
+                <el-form-item v-if="dialogRecurrence.type === 'weekly'" label="重复星期">
+                    <el-checkbox-group v-model="dialogRecurrence.daysOfWeek">
                         <el-checkbox v-for="(day, index) in weekDays" :key="index" :label="index">
                             {{ day }}
                         </el-checkbox>
@@ -84,7 +84,7 @@
 
                 <!-- 结束条件 -->
                 <el-form-item label="结束条件">
-                    <el-radio-group v-model="useEventData.currentEvent.recurrence.endCondition">
+                    <el-radio-group v-model="dialogRecurrence.endCondition">
                         <el-radio label="never">永不</el-radio>
                         <el-radio label="occurrences">重复次数</el-radio>
                         <el-radio label="untilDate">结束日期</el-radio>
@@ -92,13 +92,13 @@
                 </el-form-item>
 
                 <!-- 次数输入 -->
-                <el-form-item v-if="useEventData.currentEvent.recurrence.endCondition === 'occurrences'" label="重复次数">
-                    <el-input-number v-model="useEventData.currentEvent.recurrence.occurrences" :min="1" :max="999" />
+                <el-form-item v-if="dialogRecurrence.endCondition === 'occurrences'" label="重复次数">
+                    <el-input-number v-model="dialogRecurrence.occurrences" :min="1" :max="999" />
                 </el-form-item>
 
                 <!-- 结束日期 -->
-                <el-form-item v-if="useEventData.currentEvent.recurrence.endCondition === 'untilDate'" label="结束日期">
-                    <el-date-picker v-model="useEventData.currentEvent.recurrence.endDate" type="date" value-format="YYYY-MM-DD"
+                <el-form-item v-if="dialogRecurrence.endCondition === 'untilDate'" label="结束日期">
+                    <el-date-picker v-model="dialogRecurrence.endDate" type="date" value-format="YYYY-MM-DD"
                         placeholder="选择结束日期" />
                 </el-form-item>
             </el-form>
@@ -118,8 +118,8 @@ import { ElMessageBox } from 'element-plus'
 import { ScheduleStore } from '../stores/ScheduleStore'
 import { EventData } from '../stores/EventData';
 import { getRectPositionFromTimeRange } from '../utils/dataHelper';
-
-
+import { cloneDeep } from 'lodash-es'
+import type { RecurrenceRule } from '../types/schedule';
 
 const useEventData = EventData();
 const useScheduleStore = ScheduleStore();
@@ -129,8 +129,29 @@ const options = [
     { value: 'option3', label: 'Option 3' },
 ]
 
-import type { ScheduleEvent, RecurrenceRule } from '../types/schedule';
 
+// 专门用于对话框的重复规则缓存
+const dialogRecurrence = ref<RecurrenceRule>(cloneDeep(useEventData.currentEvent.recurrence))
+
+watch(() => useEventData.currentEvent, (newVal) => {
+    if (useEventData.selectedIndex !== -1 && useEventData.currentWeekEvents[useEventData.selectedIndex]) {
+        newVal = {
+            ...newVal,
+            start: new Date(newVal.start),
+            end: new Date(newVal.end),
+        }
+        if (newVal.title === '') {
+            newVal = {
+                ...newVal,
+                title: '新事项',
+            }
+        }
+        useEventData.currentRects[useEventData.selectedIndex] = getRectPositionFromTimeRange(newVal);
+        useEventData.currentWeekEvents.splice(useEventData.selectedIndex, 1, { ...newVal });
+
+        useScheduleStore.updateEvent(newVal);
+    }
+}, { deep: true, immediate: true });
 // 修复 1: 明确表单类型
 
 const showRepeatDialog = ref(false)
@@ -161,14 +182,6 @@ const handleRepeatSwitch = async (val: boolean) => {
     if (val) {
         // 开启重复逻辑
         showRepeatDialog.value = true
-        Object.assign(useEventData.currentEvent.recurrence, {
-            type: 'daily',
-            interval: 1,
-            daysOfWeek: [],
-            endCondition: 'never',
-            occurrences: 1,
-            endDate: ''
-        })
     } else {
         // 关闭重复时触发二次确认
         try {
@@ -187,7 +200,7 @@ const handleRepeatSwitch = async (val: boolean) => {
                 type: 'daily',
                 interval: 1,
                 daysOfWeek: [],
-                endCondition: 'never',
+                endCondition: 'occurrences',
                 occurrences: 1,
                 endDate: ''
             })
@@ -200,87 +213,19 @@ const handleRepeatSwitch = async (val: boolean) => {
 
 // 确认设置
 const confirmRepeat = () => {
-    const rule: Partial<RecurrenceRule> = {
-        ...useEventData.currentEvent.recurrence,
-        daysOfWeek: useEventData.currentEvent.recurrence.daysOfWeek as number[]
-    };
-
-    if (rule.endCondition !== 'occurrences') delete rule.occurrences;
-    if (rule.endCondition !== 'untilDate') delete rule.endDate;
-    if (rule.type !== 'weekly') delete rule.daysOfWeek;
-
-    useEventData.currentEvent.recurrence = rule as RecurrenceRule;
+    Object.assign(useEventData.currentEvent.recurrence, dialogRecurrence.value)
+    useScheduleStore.updateEvent(useEventData.currentEvent)
     showRepeatDialog.value = false;
 }
 
 
-// 修复 5: 调整提交逻辑
-const submitEvent = async () => {
-    try {
-        const weeklyMeeting: ScheduleEvent = {
-            id: '1234567890',
-            title: '每周项目例会',
-            category: '工作',
-            start: new Date('2025-04-15T09:00:00'),
-            end: new Date('2025-04-15T10:00:00'),
-            allDay: false,
-            location: '公司会议室A',
-            description: '讨论项目进度和解决遇到的问题。',
-            repeat: true,
-            recurrence: {
-                type: 'weekly',
-                interval: 1,
-                daysOfWeek: [2], // 每周二，0 表示周日，1 表示周一，以此类推
-                endCondition: 'untilDate',
-                endDate: new Date('2025-12-31')
-            }
-        };
-        await useScheduleStore.addEvent(weeklyMeeting);
-        console.log('创建成功');
-    } catch (error) {
-        console.error('创建失败:', error);
-    }
-};
-
-const deleteEvent = async () => {
-    try {
-        await useScheduleStore.deleteEvent('3328e07f-dba5-450d-a8f0-738b80cf9bfa');
-        console.log('删除成功');
-    } catch (error) {
-        console.error('删除失败:', error);
-    }
-};
-
-
 const durationText = computed(() => {
     if (!useEventData.currentEvent.start || !useEventData.currentEvent.end) return ' '
-
     const diffMinutes = dayjs(useEventData.currentEvent.end).diff(useEventData.currentEvent.start, 'minute')
     const hours = Math.floor(diffMinutes / 60)
     const minutes = diffMinutes % 60
     return `${hours}小时${minutes}分钟`
 })
-
-
-watch(() => useEventData.currentEvent, (newVal) => {
-    if (useEventData.selectedIndex !== -1 && useEventData.currentWeekEvents[useEventData.selectedIndex]) {
-        newVal = {
-            ...newVal,
-            start: new Date(newVal.start),
-            end: new Date(newVal.end),
-        }
-        if (newVal.title === '') {
-            newVal = {
-                ...newVal,
-                title: '新事项'
-            }
-        }
-        useEventData.currentRects[useEventData.selectedIndex] = getRectPositionFromTimeRange(newVal);
-        useEventData.currentWeekEvents.splice(useEventData.selectedIndex, 1, { ...newVal });
-        useScheduleStore.updateEvent(newVal);
-
-    }
-}, { deep: true, immediate: true });
 
 </script>
 

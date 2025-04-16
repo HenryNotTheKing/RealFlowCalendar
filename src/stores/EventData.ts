@@ -1,7 +1,7 @@
 import { ScheduleEvent, Rect } from "../types/schedule";
 import { defineStore } from "pinia";
 import { ref } from "vue";
-import { ScheduleStore } from "./ScheduleStore";
+
    
  
 export const EventData = defineStore("eventData", () => {

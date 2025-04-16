@@ -180,6 +180,7 @@ class ScheduleEventAPI(MethodView):
         
         # 统一存储为 naive UTC 时间
         new_event = ScheduleEvent(
+            id=data.get('id'),
             start=start_aware.replace(tzinfo=None),  
             end=end_aware.replace(tzinfo=None),     
             title=data['title'],
@@ -208,6 +209,7 @@ class ScheduleEventAPI(MethodView):
         start_time = datetime.fromisoformat(data['start']).astimezone(timezone.utc).replace(tzinfo=None)
         end_time = datetime.fromisoformat(data['end']).astimezone(timezone.utc).replace(tzinfo=None)
         
+        event.id = data.get('id')
         event.title = data['title']
         event.category = data.get('category')
         event.start = start_time

@@ -68,20 +68,21 @@
           <foreignObject 
              v-for="(rect, index) in useEventData.currentRects"
             :key="'fo-'+index"
+            :data-selected="useEventData.selectedIndex === index"
             :x="getRectPosition(rect).x + 8"
             :y="getRectPosition(rect).y"
             :width="getRectPosition(rect).width"
             :height="getRectPosition(rect).height"
             pointer-events="none"
             >
-            <div class="event-content">
-              <div class="event-title">{{ useEventData.currentWeekEvents[index]?.title }}</div>
+            <div class="event-content" :class="{ selected: useEventData.selectedIndex === index }">
+             <div class="event-title">{{ useEventData.currentWeekEvents[index]?.title }}</div>
               <div class="event-time">
-                {{ dayjs(useEventData.currentWeekEvents[index]?.start).format('HH:mm') }} 
-                - {{ dayjs(useEventData.currentWeekEvents[index]?.end).format('HH:mm') }}
-              </div>
+                 {{ dayjs(useEventData.currentWeekEvents[index]?.start).format('HH:mm') }} 
+               - {{ dayjs(useEventData.currentWeekEvents[index]?.end).format('HH:mm') }}
             </div>
-          </foreignObject>
+              </div>
+             </foreignObject>
           <path
               v-for="(rect, index) in useEventData.currentRects"
               :class="{ 'hide-stripe': interactionMode === 'drag' && activeRectIndex === index }"
@@ -531,14 +532,15 @@ function stopInteraction(event: {clientX: any; clientY: any}) {
         index: useEventData.selectedIndex,// 注入当前矩形索引
         id: crypto.randomUUID()
       };
+      useEventData.currentEvent = currentEvent;
       useEventData.currentWeekEvents.push(currentEvent);
       useScheduleStore.addEvent(currentEvent);
     }
   } 
   // 新增拖拽和调整后的更新逻辑
   else if (interactionMode.value === 'drag' || interactionMode.value === 'resize') {
-  const index = activeRectIndex.value;
-  if (index !== -1) {
+    const index = activeRectIndex.value;
+    if (index !== -1) {
     // 保留原始ID
     const originalEvent = useEventData.currentWeekEvents[index];
     
@@ -548,7 +550,7 @@ function stopInteraction(event: {clientX: any; clientY: any}) {
       ...useEventData.currentEvent, // 应用新属性
       id: originalEvent.id       // 确保ID不变
     });
-    
+
     useScheduleStore.updateEvent({
       ...originalEvent,
       ...useEventData.currentEvent,
@@ -574,8 +576,8 @@ function cancelInteraction() {
         index:useEventData.selectedIndex, // 注入当前矩形索引
         id: crypto.randomUUID()
       };
+     useEventData.currentEvent = currentEvent;
      useEventData.currentWeekEvents.push(currentEvent);
-     console.log('cancel');
   } else if (interactionMode.value === 'resize'|| interactionMode.value === 'drag') {
       // 强制提交当前调整状态（已通过 handleMove 实时更新）
       useEventData.currentRects = [...useEventData.currentRects]; // 触发数组更新
@@ -636,7 +638,6 @@ function handleKeyDown(event: { key: string; }) {
       // 重置后续元素的索引
       useEventData.currentWeekEvents = useEventData.currentWeekEvents.map((event, i) => ({
           ...event,
-          index: i // 更新为新的数组索引
       }));
       
       useEventData.selectedIndex = -1;
@@ -744,10 +745,8 @@ onUnmounted(() => {
   opacity: 0.8;
   color: inherit; 
 }
-.final-rect.selected + foreignObject {
-  .event-title,
-  .event-time {
+.event-content.selected .event-title,
+.event-content.selected .event-time {
     color: white !important;
-  }
 }
 </style>

@@ -42,30 +42,30 @@ export const getWeekKey = (date: Date): string => {
 };
 
 
-export function generateRecurringEvents(
-  baseEvent: ScheduleEvent,
-  startDate: Date,
-  endDate: Date
-): ScheduleEvent[] {
-  if (!baseEvent.recurrence) return [baseEvent];
+// export function generateRecurringEvents(
+//   baseEvent: ScheduleEvent,
+//   startDate: Date,
+//   endDate: Date
+// ): ScheduleEvent[] {
+//   if (!baseEvent.recurrence) return [baseEvent];
   
-  const rule = new RRule({
-    freq: RRule[baseEvent.recurrence.type.toUpperCase()],
-    dtstart: baseEvent.start,
-    until: baseEvent.recurrence.endDate ? 
-      new Date(baseEvent.recurrence.endDate) : undefined,
-    interval: baseEvent.recurrence.interval,
-    count: baseEvent.recurrence.endCondition === 'occurrences' ?
-      baseEvent.recurrence.occurrences : undefined,
-    byweekday: baseEvent.recurrence.daysOfWeek
-  });
+//   const rule = new RRule({
+//     freq: RRule[baseEvent.recurrence.type.toUpperCase()],
+//     dtstart: baseEvent.start,
+//     until: baseEvent.recurrence.endDate ? 
+//       new Date(baseEvent.recurrence.endDate) : undefined,
+//     interval: baseEvent.recurrence.interval,
+//     count: baseEvent.recurrence.endCondition === 'occurrences' ?
+//       baseEvent.recurrence.occurrences : undefined,
+//     byweekday: baseEvent.recurrence.daysOfWeek
+//   });
 
-  return rule.between(startDate, endDate, true).map(occ => ({
-    ...baseEvent,
-    start: occ,
-    end: new Date(occ.getTime() + (baseEvent.end.getTime() - baseEvent.start.getTime()))
-  }));
-}
+//   return rule.between(startDate, endDate, true).map(occ => ({
+//     ...baseEvent,
+//     start: occ,
+//     end: new Date(occ.getTime() + (baseEvent.end.getTime() - baseEvent.start.getTime()))
+//   }));
+// }
 
 export function getRectPositionFromTimeRange(Event: ScheduleEvent) {
   const useDateDisplay = DateDisplay();

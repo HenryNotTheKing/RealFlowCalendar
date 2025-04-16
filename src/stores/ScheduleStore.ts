@@ -44,11 +44,14 @@ export const ScheduleStore = defineStore('schedule', () => {
       const payload = {
         ...newEvent,
         start: newEvent.start.toISOString(),
-        end: newEvent.end.toISOString()
+        end: newEvent.end.toISOString(),
+        id: newEvent.id,
       };
       const response = await axios.post('/api/events', payload);
       const savedEvent = response.data;
-      console.log(newEvent);
+      console.log("newEvent",newEvent);
+      console.log("savedEvent",savedEvent);
+      console.log("payload",payload);
       const occurrenceWeeks = getEventWeeks(savedEvent);
       occurrenceWeeks.forEach((weekKey: string) => {
         const weekEvents = weeklyCache.value.get(weekKey) || [];
