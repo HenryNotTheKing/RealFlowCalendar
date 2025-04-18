@@ -328,6 +328,7 @@ function startInteraction(event: { ctrlKey: any; clientX: any; clientY: any; }) 
     if (rawX >= rectX && rawX <= rectX + colWidth.value) {
       if (Math.abs(rawY - rectTop) < 8) {
         activeRectIndex.value = i;
+        useEventData.selectedIndex = i;
         resizeEdge.value = 'top';
         startRow.value = r.startRow;
         return; // 仅记录状态，等待移动判断
@@ -335,6 +336,7 @@ function startInteraction(event: { ctrlKey: any; clientX: any; clientY: any; }) 
 
       if (Math.abs(rawY - rectBottom) < 8) {
         activeRectIndex.value = i;
+        useEventData.selectedIndex = i;
         resizeEdge.value = 'bottom';
         startRow.value = r.startRow;
         return; // 仅记录状态，等待移动判断
@@ -354,6 +356,7 @@ function startInteraction(event: { ctrlKey: any; clientX: any; clientY: any; }) 
       rawY <= rectY + r.rowCount * rowHeight.value
     ) {
       activeRectIndex.value = i;
+      useEventData.selectedIndex = i;
       dragOffsetX.value = rawX - rectX;
       dragOffsetY.value = rawY - rectY;
       return; // 仅记录索引，等待后续移动判断
@@ -446,20 +449,19 @@ function handleMove(event: { clientX: number; clientY: number; }) {
       case 'drag': {
           const targetX = event.clientX - dragOffsetX.value;
           const targetY = rawY - dragOffsetY.value;
-
+          
           const newColumn = alignToColumn(targetX + colWidth.value / 2);
           const newStartRow = Math.min(
               95 - useEventData.currentRects[activeRectIndex.value].rowCount + 1,
               Math.max(0, Math.floor(targetY / rowHeight.value))
           );
-
           // 生成临时矩形
           const tempRect = {
               ...useEventData.currentRects[activeRectIndex.value],
               column: newColumn,
               startRow: newStartRow
           };
-          
+
           // 检测与其他矩形的冲突（排除自己）
           const isOverlapping = useEventData.currentRects.some((r, index) =>
               index !== activeRectIndex.value && checkOverlap(tempRect, r)
@@ -551,8 +553,9 @@ function stopInteraction(event: {clientX: any; clientY: any}) {
     const index = activeRectIndex.value;
     if (index !== -1) {
     // 保留原始ID
-    const originalEvent = useEventData.currentWeekEvents[index];
-    
+     const originalEvent = { ...useEventData.currentWeekEvents[index] };
+    console.log("useEventData.currentWeekEvents[index]", useEventData.currentWeekEvents[index]);
+    console.log("currentEvent", useEventData.currentEvent);
     // 合并新旧数据
     useEventData.currentWeekEvents.splice(index, 1, {
       ...originalEvent,          // 保留原始属性

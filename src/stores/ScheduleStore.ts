@@ -47,6 +47,7 @@ export const ScheduleStore = defineStore('schedule', () => {
         end: newEvent.end.toISOString(),
         id: newEvent.id,
       };
+      console.log('添加事件:', payload);
       const response = await axios.post('/api/events', payload);
       const savedEvent = response.data;
       const occurrenceWeeks = getEventWeeks(savedEvent);

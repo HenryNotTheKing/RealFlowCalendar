@@ -2,18 +2,18 @@
     <div class="event-form">
         <el-form :model="useEventData.currentEvent" label-width="auto" style="max-width: 300px">
             <el-form-item label="类别" label-position="top">
-                <el-select v-model="useEventData.currentEvent.category" placeholder="请选择" class="custom-select">
+                <el-select v-model="useEventData.currentEvent.category" placeholder="请选择" class="custom-select" >
                     <el-option v-for="item in useEventData.options" :key="item.value" :label="item.label" :value="item.value"
                         class="custom-option" />
                 </el-select>
             </el-form-item>
             <el-form-item label="标题" label-position="top">
-                <el-input v-model="useEventData.currentEvent.title" />
+                <el-input v-model="useEventData.currentEvent.title"/>
             </el-form-item>
             <el-form-item label="时间">
                 <el-col :span="8">
                     <el-time-picker v-model="useEventData.currentEvent.start" format="HH:mm" :show-seconds="false" placeholder="开始"
-                        style="width: 100%; font-size: 13px" :clearable="false" :disabled-hours="disableStartHours" :disabled-minutes="disableStartMinutes"/>
+                        style="width: 100%; font-size: 13px" :clearable="false" :disabled-hours="disableStartHours" :disabled-minutes="disableStartMinutes" @change="console.log(useEventData.currentWeekEvents)"/>
                 </el-col>
                 <el-col :span="2" class="text-center">
                     <div style="display: flex; justify-content: center; color: #3d3d3d">-</div>
@@ -125,7 +125,6 @@ import { DateDisplay } from '../stores/DateDisplay';
 const useDateDiaplay = DateDisplay();
 const useEventData = EventData();
 const useScheduleStore = ScheduleStore();
-
 
 function cancel() {
     showRepeatDialog.value = false;

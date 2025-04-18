@@ -9,8 +9,8 @@
         >
             <div 
                 class="color-display"
-                :style="{backgroundColor: useEventData.colors[index]}"
-                 @click="toggleColorPicker(index, $event)"
+                :style="{backgroundColor :useEventData.colorMap[useEventData.colors[index]]['--baseColor']}"
+                @click="toggleColorPicker(index, $event)"
             ></div>
             <input
                 class="text-display"

@@ -3,7 +3,7 @@ from extension import db
 import uuid
 class ScheduleEvent(db.Model):
     __tablename__ = 'schedule_events'
-    id = db.Column(db.String(50), primary_key=True, default=lambda: str(uuid.uuid4()), nullable=False)
+    id = db.Column(db.String(50), primary_key=True)
     title = db.Column(db.String(100))
     category = db.Column(db.String(50))
     start = db.Column(db.DateTime, nullable=False)
