@@ -49,9 +49,6 @@ export const ScheduleStore = defineStore('schedule', () => {
       };
       const response = await axios.post('/api/events', payload);
       const savedEvent = response.data;
-      console.log("newEvent",newEvent);
-      console.log("savedEvent",savedEvent);
-      console.log("payload",payload);
       const occurrenceWeeks = getEventWeeks(savedEvent);
       occurrenceWeeks.forEach((weekKey: string) => {
         const weekEvents = weeklyCache.value.get(weekKey) || [];
@@ -209,7 +206,7 @@ export const ScheduleStore = defineStore('schedule', () => {
        fetchWeekEventsFromCache(currentDate); 
       }
       else {
-        fetchWeekEventsFromBackend(currentDate);
+        fetchWeekEventsFromBackend(currentDate); 
       }
     }
     catch (error) {
@@ -218,7 +215,14 @@ export const ScheduleStore = defineStore('schedule', () => {
 
     }
   }
-
+  function clearWeekCache(event: ScheduleEvent) {
+    const weeks = getEventWeeks(event);
+    const useEventData = EventData();
+    weeks.forEach(weekKey => {
+      weeklyCache.value.delete(weekKey)
+    })
+    useEventData.currentWeekEvents = []       // 清空当前显示的事件
+}
   return {
     isShowEventForm,
     weeklyCache,
@@ -230,5 +234,6 @@ export const ScheduleStore = defineStore('schedule', () => {
     updateEvent,
     deleteEvent,
     updateWeekEvents,
+    clearWeekCache
   };
 });

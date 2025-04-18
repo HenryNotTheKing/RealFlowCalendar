@@ -1,11 +1,38 @@
 import { ScheduleEvent, Rect } from "../types/schedule";
 import { defineStore } from "pinia";
-import { ref } from "vue";
+import { ref, computed } from "vue";
 
    
  
 export const EventData = defineStore("eventData", () => {
-
+    const catagories = ref<string[]>(["活动", "学习", "工作", "生活", "其他"]);
+    const colors = ref<string[]>(['Blue', 'Green', 'Yellow', 'Pink', 'Purple']);
+    const options = computed(() =>
+        catagories.value.map(item => ({
+            value: item,
+            label: item
+        }))
+    )
+    
+    const colorMap = <Record<string, Record<string, string>>>{
+        'Blue': deriveColors('#409EFF'),
+        'Green': deriveColors('#67C23A'),
+        'Yellow': deriveColors('#E6A23C'),
+        'Pink': deriveColors('#E91E63'),
+        'Purple': deriveColors('#9C27B0'),
+        '': deriveColors('#409EFF'),
+      }
+      
+      // 添加颜色派生函数
+      function deriveColors(baseColor: string) {
+        return {
+          '--baseColor': baseColor,
+          '--shallow': `color-mix(in srgb, ${baseColor} 20%, white)`,
+          '--deep': `color-mix(in srgb, ${baseColor} 100%, black)`,
+          '--shadow': `color-mix(in srgb, ${baseColor} 30%, black)`,
+          '--text': `color-mix(in srgb, ${baseColor} 45%, black)`
+        }
+      }
     const currentRects = ref<Rect[]>([]);
     const selectedIndex = ref<number>(-1);
     const currentWeekEvents = ref<ScheduleEvent[]>([]);
@@ -27,10 +54,25 @@ export const EventData = defineStore("eventData", () => {
             daysOfWeek: []
         }
     });
+    const resetRecurrence = () => {
+        currentEvent.value.recurrence = {
+            type: "daily",
+            interval: 1,
+            endCondition: "occurrences",
+            occurrences: 1,
+            daysOfWeek: []
+        }
+        return currentEvent.value.recurrence;
+    }
     return {
         currentRects,
         selectedIndex,
         currentWeekEvents,
-        currentEvent
+        currentEvent,
+        colorMap,
+        colors,
+        catagories,
+        options,
+        resetRecurrence,
     }
 })

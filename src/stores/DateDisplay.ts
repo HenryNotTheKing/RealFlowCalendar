@@ -43,7 +43,6 @@ watch(selectedDate, (newDate) => {
   const useScheduleStore = ScheduleStore();
   const useEventData = EventData();
   useScheduleStore.updateWeekEvents(newDate);//矩形的更新也写好了
-  console.log('selectedDate changed:', newDate);
   useEventData.selectedIndex = -1;
   useScheduleStore.isShowEventForm = false;
 });

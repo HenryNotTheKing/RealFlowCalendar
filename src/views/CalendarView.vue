@@ -1,6 +1,8 @@
 <template>
   <div class="sub-left-panel">
     <Calendar />
+    <div class="divideline_horizontal"></div>
+    <catagoryPicker />
   </div>
   <div class="divideline_left"></div>
   <div class="sub-center-panel">
@@ -39,6 +41,7 @@ import DayAxis from '../component/DayAxis.vue';
 import TimeAxis from '../component/TimeAxis.vue';
 import Calendar from '../component/Calendar.vue';
 import EventForm from '../component/EventForm.vue';
+import catagoryPicker from '../component/catagoryPicker.vue';
 import { ref, onMounted} from 'vue';
 import { DateDisplay } from '../stores/DateDisplay.js';
 import { ScheduleStore } from '../stores/ScheduleStore'

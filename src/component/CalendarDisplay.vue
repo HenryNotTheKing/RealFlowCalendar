@@ -64,6 +64,7 @@
               @mouseleave="resetRectHoverCursor"
               @mousedown="startInteraction($event)"
               @click="selectRect(index)"
+              :style="assignColor(index)"
           />
           <foreignObject 
              v-for="(rect, index) in useEventData.currentRects"
@@ -74,6 +75,7 @@
             :width="getRectPosition(rect).width"
             :height="getRectPosition(rect).height"
             pointer-events="none"
+            :style="assignColor(index)"
             >
             <div class="event-content" :class="{ selected: useEventData.selectedIndex === index }">
              <div class="event-title">{{ useEventData.currentWeekEvents[index]?.title }}</div>
@@ -90,6 +92,8 @@
               :d="getStripePath(rect)"
               class="rect-stripe"
               pointer-events="none"
+              :style="assignColor(index)"
+
           />
           <!-- 预览矩形 -->
           <rect
@@ -102,7 +106,6 @@
               ry="8"
               class="preview-rect"
           />
-
       </svg>
   </div>
 </template>
@@ -139,6 +142,11 @@ const canvasHeight = computed(() => Math.max(
 ));
 const maxRowHeight = 50;
 const colWidth = computed(() => canvasWidth.value / 7);
+
+
+const assignColor = (index: number) => {
+ return useEventData.colorMap[useEventData.colors[useEventData.catagories.indexOf(useEventData.currentWeekEvents[index].category)] || ''];
+}
 
 
 //矩形圆角绘制
@@ -355,7 +363,7 @@ function startInteraction(event: { ctrlKey: any; clientX: any; clientY: any; }) 
 
   // 开始新绘制
   interactionMode.value = 'draw';
-    currentColumn.value = alignToColumn(mouseX);
+  currentColumn.value = alignToColumn(mouseX);
   startRow.value = alignToGrid(mouseY);
   currentRow.value = startRow.value;
   container.value.style.cursor = 'crosshair';
@@ -430,7 +438,8 @@ function handleMove(event: { clientX: number; clientY: number; }) {
           // 仅在无重叠时更新当前行
           if (!isOverlapping || previewRowCount === 0) {
               currentRow.value = newCurrentRow;
-              useEventData.currentEvent = {...useEventData.currentEvent, ...getRectTimeRange(previewRect)};
+              useEventData.resetRecurrence();
+              useEventData.currentEvent = {...useEventData.currentEvent, ...getRectTimeRange(previewRect), repeat: false};
           }
           break;
       }
@@ -622,23 +631,23 @@ function selectRect(index: number) {
 function handleKeyDown(event: { key: string; }) {
   if (event.key === 'Backspace' && useEventData.selectedIndex!== -1 && !isCancelInteraction.value) {
       const targetIndex = useEventData.selectedIndex;
-      // 添加防御性判断
-      console.log(clickStartPosition.value);
+
       if (targetIndex < 0 || targetIndex >= useEventData.currentWeekEvents.length) return;
 
       const deletedEvent = useEventData.currentWeekEvents[targetIndex];
       if (!deletedEvent?.id) return;
-
-      // 先提交删除请求
-      useScheduleStore.deleteEvent(deletedEvent.id)
-
+      const isRepeat = deletedEvent.repeat;
       // 再更新本地数据
+      useScheduleStore.deleteEvent(deletedEvent.id)
       useEventData.currentRects = useEventData.currentRects.filter((_, i) => i !== targetIndex);
       useEventData.currentWeekEvents = useEventData.currentWeekEvents.filter((_, i) => i !== targetIndex);
-      // 重置后续元素的索引
       useEventData.currentWeekEvents = useEventData.currentWeekEvents.map((event, i) => ({
           ...event,
       }));
+      if(isRepeat){
+        useScheduleStore.clearWeekCache(deletedEvent)
+        useScheduleStore.updateWeekEvents(useDateDisplay.selectedDate)
+      } 
       
       useEventData.selectedIndex = -1;
   }
@@ -691,27 +700,26 @@ onUnmounted(() => {
 }
 
 .final-rect {
-  fill: #cde6ff;
+  fill: var(--shallow);
   stroke-width: 1;
   transition: all 10ms linear;
   will-change: transform;
 }
 .rect-stripe {
-  fill: #409EFF;
+  fill: var(--deep);
   stroke: none;
   rx: 8;
   ry: 8;
-
 }
 .final-rect.dragging {
-  fill:#409EFF;
-  filter: drop-shadow(0 3px 3px #2A598A);
+  fill:var(--deep);
+  filter: drop-shadow(0 3px 3px var(--shadow));
 }
 
 .final-rect.selected {
-  fill:#409EFF;
+  fill:var(--deep);
   stroke-width: 2;
-  filter: drop-shadow(0 3px 3px #2A598A);
+  filter: drop-shadow(0 3px 3px var(--shadow));
 }
 .hide-stripe {
   display: none;
@@ -730,7 +738,7 @@ onUnmounted(() => {
   box-sizing: border-box;
   user-select: none;
   pointer-events: none;
-  color:#15385f
+  color:var(--text)
 }
 
 .event-title {

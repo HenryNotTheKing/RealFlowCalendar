@@ -86,7 +86,8 @@ body {
   background-color: #f7f7f7; 
   flex-shrink: 0;
   display: flex; 
-  justify-content: center;
+  justify-content:flex-start;
+  flex-direction: column;
 }
 
 .sub-center-panel {
@@ -157,4 +158,10 @@ body {
   width: 1px;
   background-color: #F0F0F0;
   z-index: 999;     /* 确保在最顶层 */
+}
+
+.divideline_horizontal {
+  height:2px;
+  width: 100%; 
+  background-color: #F0F0F0;
 }
