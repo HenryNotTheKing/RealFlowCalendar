@@ -3,7 +3,7 @@
         <el-form :model="useEventData.currentEvent" label-width="auto" style="max-width: 300px">
             <el-form-item label="类别" label-position="top">
                 <el-select v-model="useEventData.currentEvent.category" placeholder="请选择" class="custom-select" >
-                    <el-option v-for="item in useEventData.options" :key="item.value" :label="item.label" :value="item.value"
+                    <el-option v-for="item in useScheduleStore.options" :key="item.value" :label="item.label" :value="item.value"
                         class="custom-option" />
                 </el-select>
             </el-form-item>
@@ -107,7 +107,7 @@
                 <el-button @click="cancel">取消</el-button>
                 <el-button type="primary" @click="confirmRepeat">确定</el-button>
             </template>
-        </el-dialog>
+        </el-dialog> 
     </div>
 </template>
 
@@ -136,7 +136,9 @@ function cancel() {
 const dialogRecurrence = ref<RecurrenceRule>(cloneDeep(useEventData.currentEvent.recurrence))
 
 watch(() => useEventData.currentEvent, (newVal) => {
-    if (useEventData.selectedIndex !== -1 && useEventData.currentWeekEvents[useEventData.selectedIndex]) {
+    if (useEventData.selectedIndex !== -1 && useEventData.currentWeekEvents[useEventData.selectedIndex]&& useScheduleStore.isOperatingForm) {
+        console.log("useEventData.currentEvent", useEventData.currentEvent.id);
+        console.log("newVal", newVal.id);
         newVal = {
             ...newVal,
             start: new Date(newVal.start),
@@ -237,7 +239,10 @@ const durationText = computed(() => {
 const disableStartHours = () => {
     if (!useEventData.currentEvent.end) return [];
     const endHour = dayjs(useEventData.currentEvent.end).hour();
-    return Array.from({length: 24}, (_, i) => i).filter(h => h > endHour);
+    if(dayjs(useEventData.currentEvent.end).minute() < dayjs(useEventData.currentEvent.start).minute()) {
+        return Array.from({length: 24}, (_, i) => i).filter(h => h > endHour - 1)}
+    else {
+        return Array.from({length: 24}, (_, i) => i).filter(h => h > endHour);}
 };
 
 const disableStartMinutes = (selectedHour: number) => {
@@ -254,7 +259,10 @@ const disableStartMinutes = (selectedHour: number) => {
 const disableEndHours = () => {
     if (!useEventData.currentEvent.start) return [];
     const startHour = dayjs(useEventData.currentEvent.start).hour();
-    return Array.from({length: 24}, (_, i) => i).filter(h => h < startHour);
+    if(dayjs(useEventData.currentEvent.end).minute() > dayjs(useEventData.currentEvent.start).minute()) {
+        return Array.from({length: 24}, (_, i) => i).filter(h => h < startHour + 1)}
+    else {
+        return Array.from({length: 24}, (_, i) => i).filter(h => h < startHour);}
 };
 
 const disableEndMinutes = (selectedHour: number) => {

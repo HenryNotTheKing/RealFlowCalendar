@@ -1,4 +1,4 @@
-import { ScheduleEvent } from '../types/schedule';
+import { ScheduleEvent, Category } from '../types/schedule';
 import { defineStore } from 'pinia';
 import { getWeekRange, getWeekKey, getRectPositionFromTimeRange} from '../utils/dataHelper';
 import axios from 'axios';
@@ -9,9 +9,18 @@ import { EventData } from './EventData';
 
 export const ScheduleStore = defineStore('schedule', () => {
   const isShowEventForm = ref(false);
-
+  const isOperatingForm = ref(false);
+  
   const weeklyCache = ref(new Map<string, ScheduleEvent[]>());
   const currentWeek = ref<ScheduleEvent[]>([]);
+
+  const categories = ref<Category[]>([]);
+  const options = computed(() =>
+    categories.value.map(item => ({
+        value: item.name,
+        label: item.name
+    }))
+)
 
   const hasCachedWeek = computed(() => (currentDate: Date) => {
     return weeklyCache.value.has(getWeekKey(currentDate));
@@ -224,17 +233,118 @@ export const ScheduleStore = defineStore('schedule', () => {
     })
     useEventData.currentWeekEvents = []       // 清空当前显示的事件
 }
+
+const fetchCategories = async () => {
+  try {
+    const response = await axios.get('/api/categories');
+    // 添加数据校验
+    if (!Array.isArray(response.data)) {
+      throw new Error('无效的分类数据格式');
+    }
+    
+    categories.value = response.data.map((c: any) => ({
+      id: c.id,
+      name: c.name || '新类别', // 防止空值
+      color: c.color || 'Blue',  // 添加默认颜色
+      displayName: c.displayName || '新类别' // 添加显示名称
+    }));
+  } catch (error) {
+    console.error('获取分类失败:', error);
+    // 可以添加用户通知
+  }
+};
+// 创建分类（带临时ID和回滚机制）
+const createCategory = async (payload: Omit<Category, 'id'>) => {
+  const tempId = -Date.now(); // 生成临时ID
+  const tempCategory = { ...payload, id: tempId };
+  
+  try {
+    // 立即添加临时分类
+    categories.value.push(tempCategory);
+    
+    // 发送请求
+    const response = await axios.post('/api/categories', payload);
+    const savedCategory = response.data;
+
+    // 替换临时分类
+    const index = categories.value.findIndex(c => c.id === tempId);
+    if (index !== -1) {
+      categories.value[index] = savedCategory;
+    }
+    
+    return savedCategory;
+  } catch (error) {
+    // 回滚删除临时分类
+    categories.value = categories.value.filter(c => c.id !== tempId);
+    console.error('创建分类失败:', error);
+    throw error;
+  }
+};
+
+// 更新分类（带状态回滚）
+const updateCategory = async (id: number, updates: Partial<Category>) => {
+  const original = categories.value.find(c => c.id === id);
+  if (!original) return;
+
+  try {
+    // 立即应用更新
+    const updated = { ...original, ...updates };
+    const index = categories.value.findIndex(c => c.id === id);
+    if (index !== -1) {
+      categories.value[index] = updated;
+    }
+
+    await axios.put(`/api/categories/${id}`, updates);
+  } catch (error) {
+    // 恢复原始状态
+    if (original) {
+      const index = categories.value.findIndex(c => c.id === id);
+      if (index !== -1) {
+        categories.value[index] = original;
+      }
+    }
+    console.error('更新分类失败:', error);
+    throw error;
+  }
+};
+
+// 删除分类（带恢复机制）
+const deleteCategory = async (id: number) => {
+  const backup = categories.value.find(c => c.id === id);
+  
+  try {
+    // 立即删除
+    categories.value = categories.value.filter(c => c.id !== id);
+    
+    await axios.delete(`/api/categories/${id}`);
+  } catch (error) {
+    // 恢复数据
+    if (backup) {
+      categories.value.push(backup);
+    }
+    console.error('删除分类失败:', error);
+    throw error;
+  }
+};
+
   return {
     isShowEventForm,
+    isOperatingForm,
     weeklyCache,
     currentWeek,
     hasCachedWeek,
+    categories,
+    options,
     fetchWeekEvents,
     addEvent,
     getEventWeeks,
     updateEvent,
     deleteEvent,
     updateWeekEvents,
-    clearWeekCache
+    clearWeekCache,
+    fetchCategories,
+    createCategory,
+    updateCategory,
+    deleteCategory,
   };
 });

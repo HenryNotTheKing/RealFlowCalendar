@@ -1,24 +1,15 @@
-import { ScheduleEvent, Rect } from "../types/schedule";
+import { ScheduleEvent, Rect} from "../types/schedule";
 import { defineStore } from "pinia";
-import { ref, computed } from "vue";
-
+import { ref } from "vue";
    
  
 export const EventData = defineStore("eventData", () => {
-    const catagories = ref<string[]>(["活动", "学习", "工作", "生活", "其他"]);
-    const colors = ref<string[]>(['Blue', 'Green', 'Yellow', 'Pink', 'Purple']);
-    const options = computed(() =>
-        catagories.value.map(item => ({
-            value: item,
-            label: item
-        }))
-    )
     
     const colorMap = <Record<string, Record<string, string>>>{
         'Blue': deriveColors('#409EFF'),
         'Green': deriveColors('#67C23A'),
         'Yellow': deriveColors('#E6A23C'),
-        'Pink': deriveColors('#E91E63'),
+        'Red': deriveColors('#E91E63'),
         'Purple': deriveColors('#9C27B0'),
         '': deriveColors('#409EFF'),
       }
@@ -64,15 +55,27 @@ export const EventData = defineStore("eventData", () => {
         }
         return currentEvent.value.recurrence;
     }
+    const resetCurrentEvent = () => {
+        currentEvent.value = {
+            id: "",
+            title: "",
+            start: new Date(),
+            end: new Date(),
+            location: "",
+            description: "",
+            category: "",
+            allDay: false,
+            repeat: false,
+            recurrence: resetRecurrence()
+        }
+    }
     return {
         currentRects,
         selectedIndex,
         currentWeekEvents,
         currentEvent,
         colorMap,
-        colors,
-        catagories,
-        options,
         resetRecurrence,
+        resetCurrentEvent
     }
 })

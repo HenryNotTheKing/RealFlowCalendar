@@ -145,7 +145,8 @@ const colWidth = computed(() => canvasWidth.value / 7);
 
 
 const assignColor = (index: number) => {
- return useEventData.colorMap[useEventData.colors[useEventData.catagories.indexOf(useEventData.currentWeekEvents[index].category)] || ''];
+ return useEventData.colorMap[useScheduleStore.categories.find((item) => item.name === useEventData.currentWeekEvents[index].category)?.color || ''];
+
 }
 
 
@@ -180,8 +181,6 @@ onMounted(() => {
   container.value?.addEventListener('scroll', handleScroll);
 
   window.addEventListener('keydown', handleKeyDown);
-
-  useScheduleStore.updateWeekEvents(useDateDisplay.selectedDate);
 });
 
 
@@ -309,6 +308,7 @@ const dragThreshold = computed(() => Math.min(rowHeight.value, colWidth.value) *
 function startInteraction(event: { ctrlKey: any; clientX: any; clientY: any; }) {
   if (!container.value) return;
   if (event.ctrlKey) return;
+  useScheduleStore.isOperatingForm = false;
   isCancelInteraction.value = false;
   const mouseX = event.clientX;
   const mouseY = event.clientY;
@@ -328,7 +328,8 @@ function startInteraction(event: { ctrlKey: any; clientX: any; clientY: any; }) 
     if (rawX >= rectX && rawX <= rectX + colWidth.value) {
       if (Math.abs(rawY - rectTop) < 8) {
         activeRectIndex.value = i;
-        useEventData.selectedIndex = i;
+        useEventData.selectedIndex = i
+        useEventData.currentEvent = useEventData.currentWeekEvents[i];
         resizeEdge.value = 'top';
         startRow.value = r.startRow;
         return; // 仅记录状态，等待移动判断
@@ -337,6 +338,7 @@ function startInteraction(event: { ctrlKey: any; clientX: any; clientY: any; }) 
       if (Math.abs(rawY - rectBottom) < 8) {
         activeRectIndex.value = i;
         useEventData.selectedIndex = i;
+        useEventData.currentEvent = useEventData.currentWeekEvents[i];
         resizeEdge.value = 'bottom';
         startRow.value = r.startRow;
         return; // 仅记录状态，等待移动判断
@@ -357,6 +359,7 @@ function startInteraction(event: { ctrlKey: any; clientX: any; clientY: any; }) 
     ) {
       activeRectIndex.value = i;
       useEventData.selectedIndex = i;
+      useEventData.currentEvent = useEventData.currentWeekEvents[i];
       dragOffsetX.value = rawX - rectX;
       dragOffsetY.value = rawY - rectY;
       return; // 仅记录索引，等待后续移动判断
@@ -366,6 +369,7 @@ function startInteraction(event: { ctrlKey: any; clientX: any; clientY: any; }) 
 
   // 开始新绘制
   interactionMode.value = 'draw';
+  useEventData.resetCurrentEvent();
   currentColumn.value = alignToColumn(mouseX);
   startRow.value = alignToGrid(mouseY);
   currentRow.value = startRow.value;
@@ -382,6 +386,8 @@ function checkOverlap(rectA: Rect, rectB: Rect) {
   const bEnd = rectB.startRow + rectB.rowCount - 1;
   return aStart <= bEnd && bStart <= aEnd;
 }
+
+
 
 function handleMove(event: { clientX: number; clientY: number; }) {
   if (!container.value) return;
@@ -470,6 +476,10 @@ function handleMove(event: { clientX: number; clientY: number; }) {
           if (!isOverlapping) {
               useEventData.currentRects[activeRectIndex.value] = tempRect;
               useEventData.currentEvent = {...useEventData.currentEvent, ...getRectTimeRange(tempRect)};
+              useEventData.currentWeekEvents[activeRectIndex.value] = {
+                  ...useEventData.currentWeekEvents[activeRectIndex.value],
+                  ...getRectTimeRange(tempRect)
+              };
           }
           break;
       }
@@ -513,6 +523,10 @@ function handleMove(event: { clientX: number; clientY: number; }) {
           if (!isOverlapping) {
               useEventData.currentRects[activeRectIndex.value] = tempRect;
               useEventData.currentEvent = {...useEventData.currentEvent, ...getRectTimeRange(tempRect)};
+              useEventData.currentWeekEvents[activeRectIndex.value] = {
+                  ...useEventData.currentWeekEvents[activeRectIndex.value],
+                  ...getRectTimeRange(tempRect)
+              };
           }
           break;
       }
@@ -547,35 +561,34 @@ function stopInteraction(event: {clientX: any; clientY: any}) {
       useEventData.currentWeekEvents.push(currentEvent);
       useScheduleStore.addEvent(currentEvent);
     }
-  } 
+  }
   // 新增拖拽和调整后的更新逻辑
   else if (interactionMode.value === 'drag' || interactionMode.value === 'resize') {
     const index = activeRectIndex.value;
     if (index !== -1) {
-    // 保留原始ID
-     const originalEvent = { ...useEventData.currentWeekEvents[index] };
-    console.log("useEventData.currentWeekEvents[index]", useEventData.currentWeekEvents[index]);
-    console.log("currentEvent", useEventData.currentEvent);
-    // 合并新旧数据
-    useEventData.currentWeekEvents.splice(index, 1, {
-      ...originalEvent,          // 保留原始属性
-      ...useEventData.currentEvent, // 应用新属性
-      id: originalEvent.id       // 确保ID不变
-    });
-
-    useScheduleStore.updateEvent({
-      ...originalEvent,
-      ...useEventData.currentEvent,
-      id: originalEvent.id
-    });
+      // 保留原始ID
+      const originalEvent = { ...useEventData.currentWeekEvents[index] };
+      // 合并新旧数据
+      useEventData.currentWeekEvents.splice(index, 1, {
+        ...originalEvent,          // 保留原始属性
+        ...useEventData.currentEvent, // 应用新属性
+        id: originalEvent.id       // 确保ID不变
+      });
+        useScheduleStore.updateEvent({
+          ...originalEvent,
+          ...useEventData.currentEvent,
+          id: originalEvent.id
+        })
+      
+    }
   }
-}
-  
-  resetInteraction();
+
+resetInteraction();
 }
 
 
 function cancelInteraction() {
+  useScheduleStore.isOperatingForm = true;
   if (interactionMode.value === 'draw' && validHeight.value) {
       useEventData.selectedIndex = useEventData.currentRects.push({
           column: currentColumn.value,

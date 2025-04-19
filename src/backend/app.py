@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from flask.views import MethodView
 from extension import db, cors
-from models import ScheduleEvent
+from models import ScheduleEvent, Categories
 from datetime import datetime, timezone
 from dateutil.rrule import rrule, DAILY, WEEKLY, MONTHLY, YEARLY
 import os
@@ -234,10 +234,80 @@ class ScheduleEventAPI(MethodView):
         db.session.commit()
         return '', 204
 
+
+class CategoriesAPI(MethodView):
+    def get(self):
+        try:
+            categories = Categories.query.all()
+            return jsonify([{
+                'id': c.id,
+                'name': c.name,
+                'color': c.color
+            } for c in categories]), 200
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+    def post(self):
+        data = request.json
+        if not data.get('name') or not data.get('color'):
+            return jsonify({'error': '缺少必要字段 name 或 color'}), 400
+            
+        try:
+            new_category = Categories(
+                name=data['name'],
+                color=data['color']
+            )
+            db.session.add(new_category)
+            db.session.commit()
+            return jsonify({
+                'id': new_category.id,
+                'name': new_category.name,
+                'color': new_category.color
+            }), 201
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'error': str(e)}), 500
+
+    def delete(self, id):
+        category = Categories.query.get(id)
+        if not category:
+            return jsonify({'error': '分类不存在'}), 404
+            
+        try:
+            db.session.delete(category)
+            db.session.commit()
+            return jsonify({}), 204
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'error': str(e)}), 500
+
+    def put(self, id):
+        category = Categories.query.get(id)
+        if not category:
+            return jsonify({'error': '分类不存在'}), 404
+            
+        data = request.json
+        try:
+            if 'name' in data: 
+                category.name = data['name']
+            if 'color' in data:
+                category.color = data['color']
+            db.session.commit()
+            return jsonify({
+                'id': category.id,
+                'name': category.name,
+                'color': category.color
+            }), 200
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'error': str(e)}), 500
+
 # 注册路由
 app.add_url_rule('/api/events', view_func=ScheduleEventAPI.as_view('events_api'), methods=['POST'])
 app.add_url_rule('/api/events/<string:event_id>', view_func=ScheduleEventAPI.as_view('event_api'), methods=['PUT', 'DELETE'])
 app.add_url_rule('/api/events/week', view_func=WeekEventsAPI.as_view('week_events_api'), methods=['GET'])
+app.add_url_rule('/api/categories', view_func=CategoriesAPI.as_view('categories_api'), methods=['GET', 'POST'])
+app.add_url_rule('/api/categories/<int:id>', view_func=CategoriesAPI.as_view('category_api'), methods=['PUT', 'DELETE'])
 
 @app.cli.command()
 def create_db():

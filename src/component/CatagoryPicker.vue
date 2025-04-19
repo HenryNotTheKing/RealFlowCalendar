@@ -4,25 +4,30 @@
     <div class="category-container">
         <div 
             class="category-item"
-            v-for="(category, index) in useEventData.catagories"
-            :key="index"
+            v-for="(category) in useScheduleStore.categories"
+            :key="category.id"
         >
             <div 
                 class="color-display"
-                :style="{backgroundColor :useEventData.colorMap[useEventData.colors[index]]['--baseColor']}"
-                @click="toggleColorPicker(index, $event)"
+                :style="{backgroundColor: colorOptions.find(c => Object.keys(c)[0] === category.color)?.[category.color]}"
+                @click="toggleColorPicker(category.id, $event)"
             ></div>
             <input
                 class="text-display"
                 type="text" 
-                v-model="useEventData.catagories[index]"
+                v-model="category.name"
+                @blur="useScheduleStore.updateCategory(category.id, { name: category.name })"
             >
+            <div class="delete-icon" @click="deleteCategory(category.id)">
+                <img src="../assets/Icons/delete.svg" alt="ADD" class="add-icon" />
         </div>
+        </div>
+        
     </div>
 
     <!-- 新增分类按钮 -->
-    <div class="add-catagory">
-        <div class="add" @click="addCategory()">
+    <div class="add-catagory" @click="addCategory()">
+        <div class="add" >
             <img src="../assets/Icons/Plus.svg" alt="ADD" class="add-icon" />
         </div>
         <div class="text-add">添加分类</div>
@@ -43,16 +48,16 @@
 
 <script lang='ts' setup>
 import { ref } from 'vue';
-import { EventData } from '../stores/EventData';
+import { ScheduleStore } from '../stores/ScheduleStore';
 
-const useEventData = EventData();
+const useScheduleStore = ScheduleStore();
 const activeColorIndex = ref<number | null>(null);
 const colorOptions = [
     {'Blue':'#409EFF'},
     {'Green':'#67C23A'},
     {'Yellow':'#E6A23C'},
-    {'Red':'#F56C6C'},
-    {'Purple':'#E91E63'},
+    {'Red':'#E91E63'},
+    {'Purple':'#9C27B0'},
 ];
 
 const menuPosition = ref({
@@ -75,22 +80,22 @@ const toggleColorPicker = (index: number, event: MouseEvent) => {
 }
 const selectColor = (colorIndex: number, targetIndex: number | null) => {
     if (targetIndex !== null) {
-        const selectedHex = Object.keys(colorOptions[colorIndex])[0];
-        useEventData.colors[targetIndex] = selectedHex;  // 直接使用目标索引
+        const selectedColor = Object.keys(colorOptions[colorIndex])[0];
+        useScheduleStore.updateCategory(targetIndex, { 
+            color: selectedColor 
+        });
     }
     activeColorIndex.value = null;  // 关闭颜色选择器
 }
 
-const isEditing = ref(false);
-
-const saveCategory = () => {
-    isEditing.value = false;
-    // 这里可以添加保存分类到store的逻辑
-    // useEventData.addCategory(categoryName.value, selectedColor.value);
+const deleteCategory = (index: number) => {
+    useScheduleStore.deleteCategory(index);
 }
 const addCategory = () => {
-  useEventData.catagories.push('');
-  useEventData.colors.push('Blue');
+    useScheduleStore.createCategory({
+        name: '新分类',
+        color: 'Blue'
+    });
 }
 </script>
 
@@ -106,7 +111,6 @@ const addCategory = () => {
 .category-item {
     display: flex;
     align-items: center;
-    gap: 8px;
     width: 100%;
     height: 30px;
 }
@@ -129,6 +133,7 @@ const addCategory = () => {
 .color-option {
     width: 16px;
     height: 16px;
+    flex-shrink: 0;
     border-radius: 4px;
     cursor: pointer;
     transition: transform 0.2s;
@@ -177,8 +182,8 @@ const addCategory = () => {
    border-radius: 4px;
    background-color: #000000;
    margin-left: 4px;
+   flex-shrink: 0;
    cursor: pointer;
-   transition: all 0.2s;
 }
 .text-display{
     font-size: 14px;
@@ -186,9 +191,10 @@ const addCategory = () => {
     margin-left: 8px;
     user-select: none;
     width: 90%;
-    height: 24px;
+    height: 28px;
     border-radius: 4px;
-
+    text-align: left;
+    padding: 0 8px;
     border: none;
     outline: none;
     background: none;
@@ -197,6 +203,13 @@ const addCategory = () => {
     -moz-appearance: none;
     appearance: none;
 }
+.delete-icon{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 20px;
+    width: 20px;
+}
 .text-display:focus {
     background-color: #efefef;
 }
@@ -204,7 +217,7 @@ const addCategory = () => {
     background-color: #efefef;
 }
 .add-icon{
-    margin-left: 8px;
+    margin-left: 11px;
 }
 .text-add{
     font-size: 14px;

@@ -65,6 +65,9 @@ const timeAxisWidth = ref(0);
 
 
 onMounted(() => {
+
+  useScheduleStore.updateWeekEvents(useDateDisplay.selectedDate);
+  useScheduleStore.fetchCategories();
   const resizeObserver = new ResizeObserver((entries) => {
     for (const entry of entries) {
       parentWidth.value = entry.contentRect.width;

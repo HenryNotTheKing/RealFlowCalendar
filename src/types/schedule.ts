@@ -6,7 +6,7 @@ export interface RecurrenceRule {
     occurrences?: number;
     endDate?: Date;
   }
-  
+
 export interface ScheduleEvent {
     id: string;
     title: string;
@@ -24,4 +24,10 @@ export interface Rect {
   column: number;
   startRow: number;
   rowCount: number;
+}
+
+export interface Category {
+  id: number;
+  name: string;
+  color: string;
 }
