@@ -65,7 +65,6 @@ export default {
   name: "ChenCalendar",
   data() {
     return {
-      selectedDate: null,
       todayDate: new Date(),
       isCollapsed: false, // 控制折叠状态
       weekList: ["周日", "周一", "周二", "周三", "周四", "周五", "周六"],
@@ -88,16 +87,23 @@ export default {
       this.isCollapsed = !this.isCollapsed;
     },
     toPrevMonth() {
-      this.selectedDate = null;
+      this.useDateDisplay.selectedDate= null;
       this.todayDate = this.getPrevMonthDate(this.todayDate);
       this.updateMonthDateList();
       this.checkTodayInCurrentMonth();
     },
     toNextMonth() {
-      this.selectedDate = null;
+      this.useDateDisplay.selectedDate= null;
       this.todayDate = this.getNextMonthDate(this.todayDate);
       this.updateMonthDateList();
       this.checkTodayInCurrentMonth();
+    },
+    updateToSelectedMonth() {
+        if (this.useDateDisplay.selectedDate) {
+            this.todayDate = new Date(this.useDateDisplay.selectedDate);
+            this.updateMonthDateList();
+            this.checkTodayInCurrentMonth();
+        }
     },
     checkTodayInCurrentMonth() {
       const today = new Date();
@@ -105,14 +111,14 @@ export default {
         this.todayDate.getFullYear() === today.getFullYear() &&
         this.todayDate.getMonth() === today.getMonth()
       ) {
-        this.selectedDate = today;
+        this.useDateDisplay.selectedDate= today;
       }
     },
     updateMonthDateList() {
       this.monthDateList = this.getMonthDateList(this.todayDate);
     },
     isDateSelected(dateItem) {
-      return this.selectedDate && this.isEqualDate(dateItem.date, this.selectedDate);
+      return this.useDateDisplay.selectedDate&& this.isEqualDate(dateItem.date, this.useDateDisplay.selectedDate);
     },
     handleDateClick(date) {
       if (date.isPrevMonth) {
@@ -120,11 +126,11 @@ export default {
       } else if (date.isNextMonth) {
         this.toNextMonth();
       }
-      this.selectedDate = date.date;
-      this.useDateDisplay.selectedDate = this.selectedDate;
+      this.useDateDisplay.selectedDate = date.date;
       this.updateMonthDateList();
     },
     isEqualDate(d1, d2) {
+      if (!d1 || !d2) return false;
       return (
         d1.getFullYear() === d2.getFullYear() &&
         d1.getMonth() === d2.getMonth() &&
@@ -206,6 +212,12 @@ export default {
       }
       return new Date(nextYear, nextMonth - 1, nextDay);
     },
+    isSameMonth(date1, date2) {
+        return (
+            date1.getFullYear() === date2.getFullYear() &&
+            date1.getMonth() === date2.getMonth()
+        );
+    },
     getPrevMonthDate(date) {
       let prevYear = date.getFullYear();
       let prevMonth = (date.getMonth() + 1) - 1;
@@ -222,10 +234,24 @@ export default {
     },
   },
   created() {
-    this.selectedDate = new Date();
+    this.useDateDisplay.selectedDate= new Date();
     this.updateMonthDateList();
   },
+  watch: {
+    'useDateDisplay.selectedDate': {
+        handler(newVal) {
+        if (newVal && !this.isSameMonth(newVal, this.todayDate)) {
+          this.todayDate = new Date(newVal);
+          this.updateToSelectedMonth();
+            }
+        },
+        deep: true
+    }
+},
 };
+
+
+
 </script>
 
 <style scoped>
