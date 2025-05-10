@@ -39,3 +39,21 @@ export interface EventSet  {
   ids: Set<string>;
   events: Map<string, ScheduleEvent>;
 }
+
+export interface Todoevent{
+ id: number;
+ title: string;
+ 待办: TodoTask[];
+ 进行中: TodoTask[];
+ 已完成: TodoTask[];
+}
+
+export interface TodoTask{
+ id: number;
+ title: string;
+ details: string;
+ deadline: Date;
+ completed: boolean;
+ priority: number;
+ status: "待办" | "进行中" | "已完成";
+}
