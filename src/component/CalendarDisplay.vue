@@ -118,6 +118,7 @@ import { ScheduleStore } from '../stores/ScheduleStore'
 import { EventData } from '../stores/EventData.js';
 import { Rect } from '../types/schedule.js';
 import dayjs from 'dayjs';
+import { ElMessageBox } from 'element-plus';
 
 // 容器引用
 const container = ref<HTMLElement|null>(null);
@@ -566,14 +567,7 @@ function stopInteraction(event: {clientX: any; clientY: any}) {
   else if (interactionMode.value === 'drag' || interactionMode.value === 'resize') {
     const index = activeRectIndex.value;
     if (index !== -1) {
-      // 保留原始ID
-      const originalEvent = { ...useEventData.currentWeekEvents[index] };
-      // 合并新旧数据
-      useEventData.currentWeekEvents.splice(index, 1, {
-        ...originalEvent,          // 保留原始属性
-        ...useEventData.currentEvent, // 应用新属性
-        id: originalEvent.id       // 确保ID不变
-      });
+      const originalEvent = { ...useEventData.currentWeekEvents[index]};
         useScheduleStore.updateEvent({
           ...originalEvent,
           ...useEventData.currentEvent,
@@ -644,30 +638,45 @@ function selectRect(index: number) {
 }
 
 // 处理按键事件
+
 function handleKeyDown(event: { key: string; }) {
-  if (event.key === 'Backspace' && useEventData.selectedIndex!== -1 && !isCancelInteraction.value) {
-      const targetIndex = useEventData.selectedIndex;
+  if (event.key === 'Backspace' && useEventData.selectedIndex !== -1 && !isCancelInteraction.value) {
+    const targetIndex = useEventData.selectedIndex;
+    if (targetIndex < 0 || targetIndex >= useEventData.currentWeekEvents.length) return;
 
-      if (targetIndex < 0 || targetIndex >= useEventData.currentWeekEvents.length) return;
+    const deletedEvent = useEventData.currentWeekEvents[targetIndex];
+    if (!deletedEvent?.id) return;
 
-      const deletedEvent = useEventData.currentWeekEvents[targetIndex];
-      if (!deletedEvent?.id) return;
-      const isRepeat = deletedEvent.repeat;
-      // 再更新本地数据
-      useScheduleStore.deleteEvent(deletedEvent.id)
-      useEventData.currentRects = useEventData.currentRects.filter((_, i) => i !== targetIndex);
-      useEventData.currentWeekEvents = useEventData.currentWeekEvents.filter((_, i) => i !== targetIndex);
-      useEventData.currentWeekEvents = useEventData.currentWeekEvents.map((event, i) => ({
-          ...event,
-      }));
-      if(isRepeat){
-        useScheduleStore.clearWeekCache(deletedEvent)
-        useScheduleStore.updateWeekEvents(useDateDisplay.selectedDate)
-      } 
-      
+    if (deletedEvent.originalEventId) {
+      ElMessageBox.confirm(
+        '请选择删除方式：',
+        '删除重复事件',
+        {
+          distinguishCancelAndClose: true,
+          confirmButtonText: '删除所有重复',
+          cancelButtonText: '仅删除此实例',
+          type: 'warning'
+        }
+      ).then(() => {
+        // 确认删除所有
+        useScheduleStore.deleteEvent(deletedEvent, true);
+        useEventData.selectedIndex = -1;
+      }).catch((action: string) => {
+        if (action === 'cancel') {
+          // 确认删除单个实例
+          useScheduleStore.deleteEvent(deletedEvent, false);
+          useEventData.selectedIndex = -1;
+        }
+        // 直接关闭对话框不执行任何操作
+      });
+    } else {
+      // 普通删除逻辑保持不变
+      useScheduleStore.deleteEvent(deletedEvent, false);
       useEventData.selectedIndex = -1;
+    }
   }
 }
+
 
 //监听缩放，回传给时间轴
 useCanvasParams.rowHeight = rowHeight.value*4;

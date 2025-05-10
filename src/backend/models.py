@@ -1,4 +1,4 @@
-from sqlalchemy.dialects.postgresql import JSON
+from sqlalchemy import JSON
 from extension import db
 
 class ScheduleEvent(db.Model):
@@ -12,7 +12,10 @@ class ScheduleEvent(db.Model):
     location = db.Column(db.String(200))
     description = db.Column(db.Text)
     repeat = db.Column(db.Boolean, default=False)
-    recurrence = db.Column(JSON)  # 存储递归规则
+    originalEventId = db.Column(db.String(50))
+    exceptions = db.Column(JSON)
+    recurrence = db.Column(JSON)
+    lastState = db.Column(JSON)
 
 class Categories(db.Model):
     __tablename__ ='categories'

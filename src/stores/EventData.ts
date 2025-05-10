@@ -43,7 +43,9 @@ export const EventData = defineStore("eventData", () => {
             endCondition: "occurrences",
             occurrences: 1,
             daysOfWeek: []
-        }
+        },
+        originalEventId: "",
+        exceptions: []
     });
     const resetRecurrence = () => {
         currentEvent.value.recurrence = {
@@ -66,7 +68,9 @@ export const EventData = defineStore("eventData", () => {
             category: "",
             allDay: false,
             repeat: false,
-            recurrence: resetRecurrence()
+            recurrence: resetRecurrence(),
+            originalEventId: "",
+            exceptions: []
         }
     }
     return {

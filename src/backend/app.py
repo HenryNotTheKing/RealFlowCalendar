@@ -3,7 +3,6 @@ from flask.views import MethodView
 from extension import db, cors
 from models import ScheduleEvent, Categories
 from datetime import datetime, timezone
-from dateutil.rrule import rrule, DAILY, WEEKLY, MONTHLY, YEARLY
 import os
 
 app = Flask(__name__)
@@ -14,14 +13,14 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 cors.init_app(app, origins=["http://localhost:5173"])
 
+def format_naive_as_utc(dt):
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc).isoformat()
+    return dt.astimezone(timezone.utc).isoformat()
+
 def serialize_event(event):
-    def format_naive_as_utc(dt):
-        if dt is None:
-            return None
-        if dt.tzinfo is None:
-            return dt.replace(tzinfo=timezone.utc).isoformat()
-        return dt.astimezone(timezone.utc).isoformat()
-    
     return {
         'id': event.id,
         'title': event.title,
@@ -33,60 +32,11 @@ def serialize_event(event):
         'description': event.description,
         'repeat': event.repeat,
         'recurrence': event.recurrence or None,
+        'originalEventId': event.originalEventId,
+        'exceptions': event.exceptions if event.exceptions else [],
+        'lastState': event.lastState if event.lastState else None
     }
-
-def build_rrule(event, request_end_date):
-    if not event.recurrence or 'type' not in event.recurrence:
-        return None
-
-    valid_types = ['daily', 'weekly', 'monthly', 'yearly']
-    if event.recurrence['type'].lower() not in valid_types:
-        raise ValueError(f"无效的重复类型: {event.recurrence['type']}")
-
-    freq_map = {
-        'daily': DAILY,
-        'weekly': WEEKLY,
-        'monthly': MONTHLY,
-        'yearly': YEARLY
-    }
-
-    # 转换为aware UTC时间
-    dtstart_aware = event.start.replace(tzinfo=timezone.utc) if event.start.tzinfo is None else event.start.astimezone(timezone.utc)
     
-    rule_params = {
-        'freq': freq_map[event.recurrence['type'].lower()],
-        'interval': event.recurrence.get('interval', 1),
-        'dtstart': dtstart_aware
-    }
-
-    if event.recurrence['endCondition'] == 'untilDate':
-        if 'endDate' not in event.recurrence:
-            raise ValueError("untilDate 类型需要 endDate 字段")
-        end_date_str = event.recurrence['endDate']
-        until_naive = datetime.fromisoformat(end_date_str)
-        # 转换为aware UTC时间
-        if until_naive.tzinfo is None:
-            until_aware = until_naive.replace(tzinfo=timezone.utc)
-        else:
-            until_aware = until_naive.astimezone(timezone.utc)
-        rule_params['until'] = until_aware
-    elif event.recurrence['endCondition'] == 'occurrences':
-        if 'occurrences' not in event.recurrence:
-            raise ValueError("occurrences 类型需要 occurrences 字段")
-        rule_params['count'] = event.recurrence['occurrences']
-    elif event.recurrence['endCondition'] == 'never':
-        # 转换为aware UTC时间
-        if request_end_date.tzinfo is None:
-            request_end_aware = request_end_date.replace(tzinfo=timezone.utc)
-        else:
-            request_end_aware = request_end_date.astimezone(timezone.utc)
-        rule_params['until'] = request_end_aware
-        
-    if event.recurrence.get('type', '').lower() == 'weekly' and 'daysOfWeek' in event.recurrence:
-        rule_params['byweekday'] = [int(day) for day in event.recurrence['daysOfWeek']]
-        
-    return rrule(**rule_params)
-
 class WeekEventsAPI(MethodView):
     def get(self):
         try:
@@ -110,71 +60,22 @@ class WeekEventsAPI(MethodView):
             start_naive_utc = start_date.replace(tzinfo=None)
             end_naive_utc = end_date.replace(tzinfo=None)
 
-            base_events = ScheduleEvent.query.filter(
+            events = ScheduleEvent.query.filter(
                 (ScheduleEvent.repeat == True) |
                 ((ScheduleEvent.start <= end_naive_utc) &
                 (ScheduleEvent.end >= start_naive_utc))
             ).all()
-
-            expanded_events = []
-            for event in base_events:
-                if event.repeat and event.recurrence:
-                    try:
-                        rule = build_rrule(event, end_date)
-                        if not rule:
-                            continue
-                            
-                        # 获取原始事件的持续时间（naive UTC时间计算）
-                        duration = event.end - event.start
-                        
-                        # 获取所有潜在发生时间
-                        raw_occurrences = list(rule.between(start_date, end_date, inc=True))
-                        
-                        # 处理空结果时的默认事件
-                        if not raw_occurrences:
-                            # 转换为aware时间进行比较
-                            event_start_aware = event.start.replace(tzinfo=timezone.utc)
-                            event_end_aware = event_start_aware + duration
-                            # 验证是否在请求范围内
-                            if (event_start_aware < end_date) and (event_end_aware > start_date):
-                                raw_occurrences = [event_start_aware]
-                        
-                        # 精确筛选符合条件的事件
-                        valid_occurrences = []
-                        for occ in raw_occurrences:
-                            # 确保occ是aware类型
-                            if occ.tzinfo is None:
-                                occ = occ.replace(tzinfo=timezone.utc)
-                                
-                            # 计算事件结束时间
-                            occ_end = occ + duration
-                            
-                            # 时间范围重叠验证（允许部分重叠）
-                            if (occ < end_date) and (occ_end > start_date):
-                                valid_occurrences.append(occ)
-                        
-                        # 生成最终事件数据
-                        for occ in valid_occurrences:
-                            expanded_events.append({
-                                **serialize_event(event),
-                                'start': occ.isoformat(),
-                                'end': (occ + duration).isoformat()
-                            })
-                            
-                    except Exception as e:
-                        print(f"生成重复事件失败 ID:{event.id} - {str(e)}")
-                        continue
-                else:
-                    expanded_events.append(serialize_event(event))
-    
-            return jsonify(expanded_events)
+            events = [serialize_event(event) for event in events]
+            return jsonify(events), 200
         except Exception as e:
             return jsonify({'error': str(e)}), 500
 
 class ScheduleEventAPI(MethodView):
     def post(self):
         data = request.json
-        # 添加时区安全解析
+        if not all([data.get('title'), data.get('start'), data.get('end')]):
+            return jsonify({'error': '缺少必要字段'}), 400
+        
         start_aware = datetime.fromisoformat(data['start']).astimezone(timezone.utc)
         end_aware = datetime.fromisoformat(data['end']).astimezone(timezone.utc)
         
@@ -189,7 +90,10 @@ class ScheduleEventAPI(MethodView):
             location=data.get('location'),
             description=data.get('description'),
             repeat=data.get('repeat', False),
-            recurrence=data.get('recurrence')
+            recurrence=data.get('recurrence'),
+            originalEventId=data.get('originalEventId'),
+            exceptions=data.get('exceptions', []),
+            lastState=data.get('lastState')
         )
 
         db.session.add(new_event)
@@ -219,7 +123,12 @@ class ScheduleEventAPI(MethodView):
         event.description = data.get('description')
         event.repeat = data.get('repeat', False)
         event.recurrence = data.get('recurrence')
-        
+        if 'originalEventId' in data:
+            event.originalEventId = data['originalEventId']
+        if 'exceptions' in data:
+            event.exceptions=data.get('exceptions', [])
+        if 'lastState' in data:
+            event.lastState=data.get('lastState')
         db.session.commit()
         return jsonify(serialize_event(event))
 

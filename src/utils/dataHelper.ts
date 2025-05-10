@@ -1,7 +1,10 @@
-import { ScheduleEvent } from "../types/schedule";
+import { ScheduleEvent, RecurrenceRule } from "../types/schedule";
 import { DateDisplay } from "../stores/DateDisplay";
-import { RRule } from "rrule";
+import { RRule, Options, RRuleSet, Frequency } from "rrule";
+import { EventData } from "../stores/EventData";
+import dayjs from "dayjs";
 // 获取某一天的周范围（周一到周日）
+
 export const getWeekRange = (date: Date): [Date, Date] => {
   const day = date.getDay(); // 0 (周日) - 6 (周六)
   const diff = date.getDate() - day + (day === 0 ? -6 : 1); // 调整到周一
@@ -42,38 +45,13 @@ export const getWeekKey = (date: Date): string => {
 };
 
 
-// export function generateRecurringEvents(
-//   baseEvent: ScheduleEvent,
-//   startDate: Date,
-//   endDate: Date
-// ): ScheduleEvent[] {
-//   if (!baseEvent.recurrence) return [baseEvent];
-  
-//   const rule = new RRule({
-//     freq: RRule[baseEvent.recurrence.type.toUpperCase()],
-//     dtstart: baseEvent.start,
-//     until: baseEvent.recurrence.endDate ? 
-//       new Date(baseEvent.recurrence.endDate) : undefined,
-//     interval: baseEvent.recurrence.interval,
-//     count: baseEvent.recurrence.endCondition === 'occurrences' ?
-//       baseEvent.recurrence.occurrences : undefined,
-//     byweekday: baseEvent.recurrence.daysOfWeek
-//   });
-
-//   return rule.between(startDate, endDate, true).map(occ => ({
-//     ...baseEvent,
-//     start: occ,
-//     end: new Date(occ.getTime() + (baseEvent.end.getTime() - baseEvent.start.getTime()))
-//   }));
-// }
-
 export function getRectPositionFromTimeRange(Event: ScheduleEvent) {
   const useDateDisplay = DateDisplay();
   const startDate = new Date(Event.start);
   const endDate = new Date(Event.end);
-  
+
   // 查找对应的日期列
-  const column = useDateDisplay.selectedDateArr.findIndex(date => 
+  const column = useDateDisplay.selectedDateArr.findIndex(date =>
     date.getDate() === startDate.getDate() &&
     date.getMonth() === startDate.getMonth()
   );
@@ -91,5 +69,166 @@ export function getRectPositionFromTimeRange(Event: ScheduleEvent) {
     startRow: Math.min(95, startRow), // 限制在0-95行范围
     rowCount: Math.min(96 - startRow, rowCount) // 最大到当天结束
   };
+}
+
+export class RecurrenceService {
+  // 生成指定时间范围内的重复事件
+  static generateRecurrenceEvents(
+    originalEvent: ScheduleEvent,
+    startDate: Date,
+    endDate: Date
+  ): ScheduleEvent[] {
+      // 添加时间范围限制
+      const queryEnd = originalEvent.recurrence.endCondition === 'untilDate' && originalEvent.recurrence.endDate
+          ? new Date(Math.min(endDate.getTime(), originalEvent.recurrence.endDate.getTime()))
+          : endDate;
+  
+      // 创建包含完整时间范围的规则集
+      const ruleSet = new RRuleSet()
+      const rrule = this.createRRule(originalEvent)
+      ruleSet.rrule(rrule)
+  
+      // 设置精确的时间范围（包含全天）
+      const adjustedStart = dayjs(startDate).startOf('day').toDate()
+      const adjustedEnd = dayjs(queryEnd).endOf('day').toDate()
+  
+      const dates = ruleSet.between(adjustedStart, adjustedEnd, true)
+      
+      // 添加例外日期过滤逻辑
+      const exceptionsSet = new Set(
+          originalEvent.exceptions?.map(d => dayjs(d).startOf('day').valueOf()) || []
+      );
+  
+      return dates
+          .map(date => this.createEventInstance(originalEvent, date))
+          .filter(instance => {
+              const instanceDayStart = dayjs(instance.start).startOf('day').valueOf();
+              return !exceptionsSet.has(instanceDayStart);
+          });
+  }
+  // 删除单个事件实例
+  static deleteOccurrence(
+    originalEvent: ScheduleEvent,
+    occurrenceDate: Date
+  ): ScheduleEvent {
+    const exceptions = [...(originalEvent.exceptions || [])]
+    exceptions.push(occurrenceDate)
+
+    return {
+      ...originalEvent,
+      exceptions: [...new Set(exceptions)] // 去重
+    }
+  }
+
+  // 编辑单个事件实例（转为独立事件）
+  static editOccurrence(
+    originalEvent: ScheduleEvent,
+    editedEvent: ScheduleEvent
+  ): { updatedOriginal: ScheduleEvent; independentEvent: ScheduleEvent } {
+    // 创建独立事件（深拷贝并解除关联）
+    const independentEvent = this.createIndependentEvent(editedEvent)
+
+    // 更新原始事件的例外日期
+    const exceptions = [...(originalEvent.exceptions || []), editedEvent.start]
+    console.log(exceptions)
+    return {
+      updatedOriginal: {
+        ...originalEvent,
+        exceptions: [...new Set(exceptions)]
+      },
+      independentEvent
+    }
+  }
+
+  // 创建独立事件
+  private static createIndependentEvent(event: ScheduleEvent): ScheduleEvent {
+    return {
+      ...event,
+      id: crypto.randomUUID(),
+      originalEventId: '',
+      repeat: false,
+      recurrence: {} as RecurrenceRule,
+      exceptions: []
+    }
+  }
+
+
+
+  // 创建RRule实例
+  private static createRRule(event: ScheduleEvent): RRule {
+    const options: Partial<Options> = {
+        dtstart: event.start,
+        freq: this.getFrequency(event.recurrence.type),
+        interval: event.recurrence.interval,
+    }
+
+    // 处理星期规则
+    if (event.recurrence.daysOfWeek) {
+      options.byweekday = event.recurrence.daysOfWeek.map(day => 
+          [RRule.SU, RRule.MO, RRule.TU, RRule.WE, RRule.TH, RRule.FR, RRule.SA][day]
+      )
+  }
+
+    switch (event.recurrence.endCondition) {
+      case 'untilDate':
+        options.until = event.recurrence.endDate
+        break
+      case 'occurrences':
+        options.count = event.recurrence.occurrences
+        break
+    }
+
+    return new RRule(options)
+  }
+
+  // 检查时间冲突
+  private static hasConflict(
+    instance: ScheduleEvent,
+    allEvents: ScheduleEvent[]
+  ): boolean {
+    return allEvents.some(e =>
+      !e.originalEventId && // 只检查独立事件
+      dayjs(e.start).isSame(instance.start, 'day') &&
+      e.id !== instance.id
+    )
+  }
+
+  // 检查是否为手动排除的实例
+  private static isException(
+    instance: ScheduleEvent,
+    original: ScheduleEvent
+  ): boolean {
+    return original.exceptions?.some(ex =>
+      dayjs(ex).isSame(instance.start, 'day')
+    ) || false
+  }
+  // 创建事件实例
+  private static createEventInstance(
+    original: ScheduleEvent,
+    date: Date
+  ): ScheduleEvent {
+    const duration = dayjs(original.end).diff(original.start)
+    const newClone = {
+      ...original,
+      start: date,
+      end: dayjs(date).add(duration, 'ms').toDate(),
+      originalEventId: original.id,
+      repeat: false, // 生成的实例不再重复
+    }
+    return {
+      ...newClone,
+      lastState: newClone
+    }
+  }
+
+  // 获取频率枚举
+  private static getFrequency(type: RecurrenceRule['type']): Frequency {
+    return {
+      daily: RRule.DAILY,
+      weekly: RRule.WEEKLY,
+      monthly: RRule.MONTHLY,
+      yearly: RRule.YEARLY
+    }[type]
+  }
 }
 
