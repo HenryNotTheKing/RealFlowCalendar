@@ -35,7 +35,6 @@ export interface Category {
   color: string;
 }
 
-<<<<<<< HEAD
 export interface EventSet  {
   ids: Set<string>;
   events: Map<string, ScheduleEvent>;
@@ -57,22 +56,4 @@ export interface TodoTask{
  completed: boolean;
  priority: number;
  status: "待办" | "进行中" | "已完成";
-=======
-export interface Todoevent{
-  id: number;
-  title: string;
-  待办: TodoTask[];
-  进行中: TodoTask[];
-  已完成: TodoTask[];
-}
-
-export interface TodoTask{
-  id: number;
-  title: string;
-  details: string;
-  deadline: Date;
-  completed: boolean;
-  priority: number;
-  status: "待办" | "进行中" | "已完成";
->>>>>>> 8d78364a926652d9fe7fbfd80ada42b33035ce9c
 }
