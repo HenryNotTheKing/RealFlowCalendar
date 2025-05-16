@@ -3,7 +3,11 @@ from flask.views import MethodView
 from extension import db, cors
 from models import ScheduleEvent, Categories
 from datetime import datetime, timezone
+from openai import OpenAI
+from dotenv import load_dotenv
 import os
+
+load_dotenv()
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(os.path.dirname(__file__), "database.sqlite")}'
@@ -143,7 +147,6 @@ class ScheduleEventAPI(MethodView):
         db.session.commit()
         return '', 204
 
-
 class CategoriesAPI(MethodView):
     def get(self):
         try:
@@ -231,6 +234,48 @@ def reset_db():
         db.create_all()
         print("数据库已重置")
         
+client = OpenAI(
+    api_key=os.getenv("DASHSCOPE_API_KEY"),
+    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+)
+
+@app.route('/chat', methods=['POST'])
+def chat():
+    data = request.json
+    try:
+        # 根据类型构建不同消息结构
+        msg_type = data.get('type', 'text')
+        
+        messages = [{"role": "system", "content": "你是一个日程管理助手，可以理解图片中的日程信息,对于其他的问题不予回答。如果图片中没有日程信息，请回答“图片中没有日程信息”，不用分析图片中的内容。"}]
+        
+        if msg_type == 'text':
+            messages.append({
+                "role": "user", 
+                "content": data['message']
+            })
+        elif msg_type == 'img':
+            messages.append({
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": "请分析这张图片中的日程信息"},
+                    {"type": "image_url", "image_url": {
+                        "url": f"{data['imageBase64']}"
+                    }}
+                ]
+            })
+        else:
+            return jsonify({"error": "不支持的请求类型"}), 400
+        completion = client.chat.completions.create(
+            model="qwen2.5-vl-72b-instruct",
+            messages=messages
+        )
+        return jsonify({
+            "reply": completion.choices[0].message.content
+        })
+    except Exception as e:
+        print(f"Error: {e}")
+        return jsonify({"error": str(e)}), 500
+    
 if __name__ == '__main__':
     db_path = app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', '')
     db_dir = os.path.dirname(db_path)

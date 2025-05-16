@@ -1,7 +1,6 @@
 import { ScheduleEvent, RecurrenceRule } from "../types/schedule";
 import { DateDisplay } from "../stores/DateDisplay";
 import { RRule, Options, RRuleSet, Frequency } from "rrule";
-import { EventData } from "../stores/EventData";
 import dayjs from "dayjs";
 // 获取某一天的周范围（周一到周日）
 
@@ -130,7 +129,6 @@ export class RecurrenceService {
 
     // 更新原始事件的例外日期
     const exceptions = [...(originalEvent.exceptions || []), editedEvent.start]
-    console.log(exceptions)
     return {
       updatedOriginal: {
         ...originalEvent,

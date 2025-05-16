@@ -93,7 +93,6 @@
       </div>
     </div>
   </div>
-  <div class="sub-right-panel">
     <!-- 添加任务模态框 -->
     <div v-show="showAddTaskModal" class="modal-overlay">
       <div class="modal">
@@ -120,373 +119,333 @@
         </div>
       </div>
     </div>
-  </div>
+    <div class="sub-right-panel" v-if="useChatParams.isChatBoxVisible"></div>
 </template>
 
-<script>
-import { ref, onMounted, watch,nextTick,computed} from "vue";
+<script setup>
+import { ref, onMounted, watch, nextTick, computed } from "vue";
+import { ChatParams } from "../stores/ChatParams";
 
-export default {
-  setup() {
-    const hoverIndex = ref(-1);
-    const newestEventId = ref(null); // 跟踪最新添加的事项ID
-    const editingEventId = ref(null); // 当前正在编辑的事项 ID
-    const eventTitleInput = ref(""); // 输入框中的值
-    const showAddTaskModal = ref(false);
-    const showUpdateTaskModal = ref(false);
+const useChatParams = ChatParams();
+const hoverIndex = ref(-1);
+const newestEventId = ref(null); // 跟踪最新添加的事项ID
+const editingEventId = ref(null); // 当前正在编辑的事项 ID
+const eventTitleInput = ref(""); // 输入框中的值
+const showAddTaskModal = ref(false);
+const showUpdateTaskModal = ref(false);
 
-    
-    // 生成唯一ID
-    function generateId() {
-      return Date.now() + Math.floor(Math.random() * 1000);
-    }
 
-    // 初始化默认任务
-    function createDefaultTask(title, details = "", status = "待办", deadline = new Date(), priority = 2) {
-      return {
-        id: generateId(),
-        name: title,
-        details: details,
-        deadline: deadline,
-        completed: status === "已完成",
-        priority: priority,
-        status: status,
-      };
-    }
+// 生成唯一ID
+function generateId() {
+  return Date.now() + Math.floor(Math.random() * 1000);
+}
 
-    // 初始化默认事件
-    function createDefaultEvent(title = "新事项") {
-      return {
-        id: generateId(),
-        title: title,
-        待办: [],
-        进行中: [],
-        已完成: [],
-      };
-    }
+// 初始化默认任务
+function createDefaultTask(title, details = "", status = "待办", deadline = new Date(), priority = 2) {
+  return {
+    id: generateId(),
+    name: title,
+    details: details,
+    deadline: deadline,
+    completed: status === "已完成",
+    priority: priority,
+    status: status,
+  };
+}
 
-    // 状态管理
-    const events = ref(JSON.parse(localStorage.getItem("events")) || [createDefaultEvent()]);
-    const currentEvent = ref(events.value[0]);
-    const dragOverColumn = ref(null);
+// 初始化默认事件
+function createDefaultEvent(title = "新事项") {
+  return {
+    id: generateId(),
+    title: title,
+    待办: [],
+    进行中: [],
+    已完成: [],
+  };
+}
 
-    const newTaskName = ref("");
-    const newTaskDetails = ref("");
-    const newTaskDeadline = ref("");
-    const updatedTaskName = ref("");
-    const newTaskPriority = ref(2);
-    const updatedTaskDetails = ref("");
+// 状态管理
+const events = ref(JSON.parse(localStorage.getItem("events")) || [createDefaultEvent()]);
+const currentEvent = ref(events.value[0]);
+const dragOverColumn = ref(null);
 
-   
-    const currentTag = ref("");
-    const currentTaskId = ref("");
+const newTaskName = ref("");
+const newTaskDetails = ref("");
+const newTaskDeadline = ref("");
+const updatedTaskName = ref("");
+const newTaskPriority = ref(2);
+const updatedTaskDetails = ref("");
 
-    // 拖拽相关状态
-    let leaveTimer = null;
-    const draggedTask = ref(null);
-    const sourceTag = ref(null);
-    const sourceIndex = ref(null);
+
+const currentTag = ref("");
+const currentTaskId = ref("");
+
+// 拖拽相关状态
+let leaveTimer = null;
+const draggedTask = ref(null);
+const sourceTag = ref(null);
+const sourceIndex = ref(null);
 // 日期格式化函数
-    function formatDate(date) {
-      if (!date) return '';
-      const d = new Date(date);
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    }
+function formatDate(date) {
+  if (!date) return '';
+  const d = new Date(date);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
-    function getPriorityClass(priority) {
-      switch (priority) {
-        case 1: return 'priority-1';
-        case 2: return 'priority-2';
-        case 3: return 'priority-3';
-        default: return 'priority-2';
-      }
-    }
+function getPriorityClass(priority) {
+  switch (priority) {
+    case 1: return 'priority-1';
+    case 2: return 'priority-2';
+    case 3: return 'priority-3';
+    default: return 'priority-2';
+  }
+}
 
-    const sortedTasks = computed(() => {
-      return (tasks) => {
-        if (!Array.isArray(tasks)) return [];
-        return [...tasks].sort((a, b) => b.priority - a.priority);
-      };
-    });
-    // 添加事件
-    const addEvent = () => {
-      // 清除之前的新事项标记
-      if (newestEventId.value) {
-        const prevNewIndex = events.value.findIndex(e => e.id === newestEventId.value);
-        if (prevNewIndex !== -1) {
-          events.value[prevNewIndex].isNew = false;
-        }
-      }
-      
+const sortedTasks = computed(() => {
+  return (tasks) => {
+    if (!Array.isArray(tasks)) return [];
+    return [...tasks].sort((a, b) => b.priority - a.priority);
+  };
+});
+// 添加事件
+const addEvent = () => {
+  // 清除之前的新事项标记
+  if (newestEventId.value) {
+    const prevNewIndex = events.value.findIndex(e => e.id === newestEventId.value);
+    if (prevNewIndex !== -1) {
+      events.value[prevNewIndex].isNew = false;
+    }
+  }
+
+  const newEvent = createDefaultEvent();
+  events.value.push(newEvent);
+  currentEvent.value = newEvent;
+  newestEventId.value = newEvent.id;
+
+  nextTick(() => {
+    const inputs = document.querySelectorAll('.text-display');
+    if (inputs.length > 0) {
+      inputs[inputs.length - 1].focus();
+    }
+  });
+};
+// 处理输入框失去焦点
+const handleBlur = (index) => {
+  if (!events.value[index].title.trim()) {
+    events.value[index].title = "新事项";
+  }
+  // 移除新事项标记
+  events.value[index].isNew = false;
+  updateEvent(index, { title: events.value[index].title });
+};
+
+const updateEvent = (index, payload) => {
+  events.value[index] = { ...events.value[index], ...payload };
+};
+
+const deleteEvent = (index) => {
+  if (confirm("确定要删除该事项吗？")) {
+    // 如果删除的是当前最新事项，清除标记
+    if (events.value[index].id === newestEventId.value) {
+      newestEventId.value = null;
+    }
+    events.value.splice(index, 1);
+    if (events.value.length > 0) {
+      currentEvent.value = events.value[events.value.length - 1];
+    } else {
       const newEvent = createDefaultEvent();
       events.value.push(newEvent);
       currentEvent.value = newEvent;
-      newestEventId.value = newEvent.id;
-      
-      nextTick(() => {
-        const inputs = document.querySelectorAll('.text-display');
-        if (inputs.length > 0) {
-          inputs[inputs.length - 1].focus();
-        }
-      });
-    };
-    // 处理输入框失去焦点
-    const handleBlur = (index) => {
-      if (!events.value[index].title.trim()) {
-        events.value[index].title = "新事项";
-      }
-      // 移除新事项标记
-      events.value[index].isNew = false;
-      updateEvent(index, { title: events.value[index].title });
-    };
-
-    const updateEvent = (index, payload) => {
-      events.value[index] = { ...events.value[index], ...payload };
-    };
-
-    const deleteEvent = (index) => {
-      if (confirm("确定要删除该事项吗？")) {
-        // 如果删除的是当前最新事项，清除标记
-        if (events.value[index].id === newestEventId.value) {
-          newestEventId.value = null;
-        }
-        events.value.splice(index, 1);
-        if (events.value.length > 0) {
-          currentEvent.value = events.value[events.value.length - 1];
-        } else {
-          const newEvent = createDefaultEvent();
-          events.value.push(newEvent);
-          currentEvent.value = newEvent;
-        }
-      }
-    };
-
-    const setCurrentEvent = (event) => {
-      currentEvent.value = event;
-      newestEventId.value = null;
-    };
-
-    // 任务操作方法
-    const openAddTaskModal = (tag) => {
-      currentTag.value = tag;
-      showAddTaskModal.value = true;
-    };
-    
-    const handleAddTask = () => {
-      if (!newTaskName.value.trim()) {
-        alert("任务名称不能为空");
-        return;
-      }
-
-      const newTask = createDefaultTask(
-        newTaskName.value.trim(),
-        newTaskDetails.value.trim(),
-        currentTag.value,
-        new Date(newTaskDeadline.value),
-        newTaskPriority.value
-      );
-
-      currentEvent.value[currentTag.value].push(newTask);
-      newTaskName.value = "";
-      newTaskDetails.value = "";
-      newTaskDeadline.value = "";
-      newTaskPriority.value = 2;
-      showAddTaskModal.value = false;
-    };
-
-    const openUpdateTaskModal = (task) => {
-      currentTaskId.value = task.id;
-      updatedTaskName.value = task.name;
-      updatedTaskDetails.value = task.details;
-      showUpdateTaskModal.value = true;
-    };
-
-    const handleUpdateTask = () => {
-      let updated = false;
-
-      ["待办", "进行中", "已完成"].forEach((tag) => {
-        const taskIndex = currentEvent.value[tag].findIndex((task) => task.id === currentTaskId.value);
-        if (taskIndex !== -1) {
-          currentEvent.value[tag][taskIndex] = {
-            ...currentEvent.value[tag][taskIndex],
-            name: updatedTaskName.value,
-            details: updatedTaskDetails.value,
-          };
-          updated = true;
-        }
-      });
-
-      if (!updated) {
-        console.warn("未找到要更新的任务");
-      }
-
-      showUpdateTaskModal.value = false;
-    };
-
-    const handleRemoveTask = (id) => {
-      ["待办", "进行中", "已完成"].forEach((tag) => {
-        const taskIndex = currentEvent.value[tag].findIndex((task) => task.id === id);
-        if (taskIndex !== -1) {
-          currentEvent.value[tag].splice(taskIndex, 1);
-        }
-      });
-    };
-
-    // 拖拽方法
-    const handleDragOver = (tag) => {
-      if (tag !== sourceTag.value) {
-        dragOverColumn.value = tag;
-      }
-    };
-
-    const handleDragEnter = (tag) => {
-      if (leaveTimer) {
-        clearTimeout(leaveTimer);
-        leaveTimer = null;
-      }
-      if (tag !== sourceTag.value) {
-        dragOverColumn.value = tag;
-      }
-    };
-
-    const handleDragLeave = (tag) => {
-      if (dragOverColumn.value === tag) {
-        leaveTimer = setTimeout(() => {
-          dragOverColumn.value = null;
-        }, 100);
-      }
-    };
-
-    const onDragStart = (event, task, tag, index) => {
-      draggedTask.value = { ...task }; // 克隆
-     sourceTag.value = tag;
-      sourceIndex.value = index;
-      event.dataTransfer.setData("text/plain", task.id);
-
-    //拖拽预览
-    const dragImage = event.target.cloneNode(true);
-    dragImage.style.width = `${event.target.offsetWidth}px`;
-    dragImage.style.position = "absolute";
-    dragImage.style.top = "-1000px";
-    document.body.appendChild(dragImage);
-    event.dataTransfer.setDragImage(dragImage, 0, 0);
-    setTimeout(() => document.body.removeChild(dragImage), 0);
-  };
-
-    const onDrop = (event, targetTag) => {
-      if (draggedTask.value && sourceTag.value !== null && sourceIndex.value !== null) {
-      
-        // 从源列中移除任务
-        currentEvent.value[sourceTag.value].splice(sourceIndex.value, 1);
-
-        // 检查目标列是否已经包含相同的任务
-        const isDuplicate = currentEvent.value[targetTag].some(
-          (task) => task.id === draggedTask.value.id
-        );
-        if (!isDuplicate) {
-          currentEvent.value[targetTag].push({ ...draggedTask.value });
-        }
-
-        // 手动触发排序
-        currentEvent.value[targetTag] = [...currentEvent.value[targetTag]].sort((a, b) => b.priority - a.priority);
-
-        // 清理拖拽状态
-        dragOverColumn.value = null;
-        draggedTask.value = null;
-        sourceTag.value = null;
-        sourceIndex.value = null;
-      }
-    };
-
-    // 数据持久化
-    const saveToLocalStorage = () => {
-      try {
-        localStorage.setItem("events", JSON.stringify(events.value));
-      } catch (e) {
-        console.error("保存数据失败:", e);
-      }
-    };
-
-    // 监听数据变化
-    watch(events, saveToLocalStorage, { deep: true });
-
-    // 初始化数据
-    onMounted(() => {
-      const savedEvents = JSON.parse(localStorage.getItem("events"));
-      if (savedEvents) {
-        savedEvents.forEach((event) => {
-          ["待办", "进行中", "已完成"].forEach((status) => {
-            event[status].forEach((task) => {
-              task.deadline = new Date(task.deadline);
-            });
-          });
-        });
-        events.value = savedEvents;
-        currentEvent.value = events.value[0];
-      }
-    });
-    function startEditingEventTitle(event) {
-      editingEventId.value = event.id;
-      eventTitleInput.value = event.title;
-      nextTick(() => {
-        const input = document.querySelector(`event-title-input-${event.id}`);
-        if (input) {
-          input.focus();
-        }
-      });
     }
-
-    function saveEventTitle(event) {
-      if (eventTitleInput.value.trim()) {
-        event.title = eventTitleInput.value.trim();
-      } else {
-        event.title = "新事项"; // 默认名
-      }
-      editingEventId.value = null; // 结束编辑
-      newestEventId.value = null; 
-      handleBlur(events.value.findIndex(e => e.id === event.id)); // 触发保存到 localStorage
-    }
-
-    // 暴露给模板
-    return {
-      hoverIndex,
-      newestEventId,
-      events,
-      currentEvent,
-      showAddTaskModal,
-      showUpdateTaskModal,
-      newTaskName,
-      newTaskDetails,
-      newTaskDeadline,
-      updatedTaskName,
-      newTaskPriority,
-      updatedTaskDetails,
-      currentTag,
-      currentTaskId,
-      dragOverColumn,
-      addEvent,
-      deleteEvent,
-      setCurrentEvent,
-      openAddTaskModal,
-      handleAddTask,
-      openUpdateTaskModal,
-      handleUpdateTask,
-      handleRemoveTask,
-      handleDragOver,
-      handleDragEnter,
-      handleDragLeave,
-      onDragStart,
-      onDrop,
-      getPriorityClass,
-      sortedTasks,
-      editingEventId,
-      eventTitleInput,
-      saveEventTitle,
-      startEditingEventTitle,
-      formatDate
-    };
-  },
+  }
 };
+
+const setCurrentEvent = (event) => {
+  currentEvent.value = event;
+  newestEventId.value = null;
+};
+
+// 任务操作方法
+const openAddTaskModal = (tag) => {
+  currentTag.value = tag;
+  showAddTaskModal.value = true;
+};
+
+const handleAddTask = () => {
+  if (!newTaskName.value.trim()) {
+    alert("任务名称不能为空");
+    return;
+  }
+
+  const newTask = createDefaultTask(
+    newTaskName.value.trim(),
+    newTaskDetails.value.trim(),
+    currentTag.value,
+    new Date(newTaskDeadline.value),
+    newTaskPriority.value
+  );
+
+  currentEvent.value[currentTag.value].push(newTask);
+  newTaskName.value = "";
+  newTaskDetails.value = "";
+  newTaskDeadline.value = "";
+  newTaskPriority.value = 2;
+  showAddTaskModal.value = false;
+};
+
+const openUpdateTaskModal = (task) => {
+  currentTaskId.value = task.id;
+  updatedTaskName.value = task.name;
+  updatedTaskDetails.value = task.details;
+  showUpdateTaskModal.value = true;
+};
+
+const handleUpdateTask = () => {
+  let updated = false;
+
+  ["待办", "进行中", "已完成"].forEach((tag) => {
+    const taskIndex = currentEvent.value[tag].findIndex((task) => task.id === currentTaskId.value);
+    if (taskIndex !== -1) {
+      currentEvent.value[tag][taskIndex] = {
+        ...currentEvent.value[tag][taskIndex],
+        name: updatedTaskName.value,
+        details: updatedTaskDetails.value,
+      };
+      updated = true;
+    }
+  });
+
+  if (!updated) {
+    console.warn("未找到要更新的任务");
+  }
+
+  showUpdateTaskModal.value = false;
+};
+
+const handleRemoveTask = (id) => {
+  ["待办", "进行中", "已完成"].forEach((tag) => {
+    const taskIndex = currentEvent.value[tag].findIndex((task) => task.id === id);
+    if (taskIndex !== -1) {
+      currentEvent.value[tag].splice(taskIndex, 1);
+    }
+  });
+};
+
+// 拖拽方法
+const handleDragOver = (tag) => {
+  if (tag !== sourceTag.value) {
+    dragOverColumn.value = tag;
+  }
+};
+
+const handleDragEnter = (tag) => {
+  if (leaveTimer) {
+    clearTimeout(leaveTimer);
+    leaveTimer = null;
+  }
+  if (tag !== sourceTag.value) {
+    dragOverColumn.value = tag;
+  }
+};
+
+const handleDragLeave = (tag) => {
+  if (dragOverColumn.value === tag) {
+    leaveTimer = setTimeout(() => {
+      dragOverColumn.value = null;
+    }, 100);
+  }
+};
+
+const onDragStart = (event, task, tag, index) => {
+  draggedTask.value = { ...task }; // 克隆
+  sourceTag.value = tag;
+  sourceIndex.value = index;
+  event.dataTransfer.setData("text/plain", task.id);
+
+  //拖拽预览
+  const dragImage = event.target.cloneNode(true);
+  dragImage.style.width = `${event.target.offsetWidth}px`;
+  dragImage.style.position = "absolute";
+  dragImage.style.top = "-1000px";
+  document.body.appendChild(dragImage);
+  event.dataTransfer.setDragImage(dragImage, 0, 0);
+  setTimeout(() => document.body.removeChild(dragImage), 0);
+};
+
+const onDrop = (event, targetTag) => {
+  if (draggedTask.value && sourceTag.value !== null && sourceIndex.value !== null) {
+
+    // 从源列中移除任务
+    currentEvent.value[sourceTag.value].splice(sourceIndex.value, 1);
+
+    // 检查目标列是否已经包含相同的任务
+    const isDuplicate = currentEvent.value[targetTag].some(
+      (task) => task.id === draggedTask.value.id
+    );
+    if (!isDuplicate) {
+      currentEvent.value[targetTag].push({ ...draggedTask.value });
+    }
+
+    // 手动触发排序
+    currentEvent.value[targetTag] = [...currentEvent.value[targetTag]].sort((a, b) => b.priority - a.priority);
+
+    // 清理拖拽状态
+    dragOverColumn.value = null;
+    draggedTask.value = null;
+    sourceTag.value = null;
+    sourceIndex.value = null;
+  }
+};
+
+// 数据持久化
+const saveToLocalStorage = () => {
+  try {
+    localStorage.setItem("events", JSON.stringify(events.value));
+  } catch (e) {
+    console.error("保存数据失败:", e);
+  }
+};
+
+// 监听数据变化
+watch(events, saveToLocalStorage, { deep: true });
+
+// 初始化数据
+onMounted(() => {
+  const savedEvents = JSON.parse(localStorage.getItem("events"));
+  if (savedEvents) {
+    savedEvents.forEach((event) => {
+      ["待办", "进行中", "已完成"].forEach((status) => {
+        event[status].forEach((task) => {
+          task.deadline = new Date(task.deadline);
+        });
+      });
+    });
+    events.value = savedEvents;
+    currentEvent.value = events.value[0];
+  }
+});
+function startEditingEventTitle(event) {
+  editingEventId.value = event.id;
+  eventTitleInput.value = event.title;
+  nextTick(() => {
+    const input = document.querySelector(`event-title-input-${event.id}`);
+    if (input) {
+      input.focus();
+    }
+  });
+}
+
+function saveEventTitle(event) {
+  if (eventTitleInput.value.trim()) {
+    event.title = eventTitleInput.value.trim();
+  } else {
+    event.title = "新事项"; // 默认名
+  }
+  editingEventId.value = null; // 结束编辑
+  newestEventId.value = null;
+  handleBlur(events.value.findIndex(e => e.id === event.id)); // 触发保存到 localStorage
+}
+
 </script>
 
 <style scoped>
@@ -673,6 +632,7 @@ export default {
 .task-box-body {
   display: flex;
   justify-content: space-evenly;
+  gap: 20px;
   align-items: flex-start;
   width: 100%;
   height: 700px;

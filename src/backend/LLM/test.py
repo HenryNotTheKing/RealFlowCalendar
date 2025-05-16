@@ -22,8 +22,6 @@ model = ChatOpenAI(
     base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
     api_key=os.getenv("DASHSCOPE_API_KEY"))
 
-
-
 class RecurrenceRule(BaseModel):
     """重复规则定义"""
     type: str = Field(..., enum=["daily", "weekly", "monthly", "yearly"], description="重复类型,只能从daily, weekly, monthly, yearly中选择")

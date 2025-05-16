@@ -119,6 +119,9 @@ import { EventData } from '../stores/EventData.js';
 import { Rect } from '../types/schedule.js';
 import dayjs from 'dayjs';
 import { ElMessageBox } from 'element-plus';
+import { ChatParams } from '../stores/ChatParams';
+
+const useChatParams = ChatParams();
 
 // 容器引用
 const container = ref<HTMLElement|null>(null);
@@ -406,6 +409,7 @@ function handleMove(event: { clientX: number; clientY: number; }) {
         if (moveDistance > dragThreshold.value) {
             interactionMode.value = 'resize';
             useScheduleStore.isShowEventForm = true;
+            useChatParams.isChatBoxVisible = false;
             container.value.style.cursor = 'ns-resize';
             return; // 进入调整模式后直接返回
         }
@@ -420,6 +424,7 @@ function handleMove(event: { clientX: number; clientY: number; }) {
         if (moveDistance > dragThreshold.value) {
             interactionMode.value = 'drag';
             useScheduleStore.isShowEventForm = true;
+            useChatParams.isChatBoxVisible = false;
             container.value.style.cursor = 'move';
         }
     }
@@ -430,6 +435,7 @@ function handleMove(event: { clientX: number; clientY: number; }) {
   switch (interactionMode.value) {
       case 'draw': {
           useScheduleStore.isShowEventForm = true;
+          useChatParams.isChatBoxVisible = false;
           const newCurrentRow = alignToGrid(event.clientY);
           const previewStartRow = Math.min(startRow.value, newCurrentRow);
           const previewRowCount = Math.abs(newCurrentRow - startRow.value);
@@ -633,6 +639,7 @@ function handleWheel(event: { ctrlKey: any; preventDefault: () => void; deltaY: 
 // 选择矩形
 function selectRect(index: number) {
   useScheduleStore.isShowEventForm = true;
+  useChatParams.isChatBoxVisible = false;
   useEventData.currentEvent = useEventData.currentWeekEvents[index];
   useEventData.selectedIndex = index;
 }

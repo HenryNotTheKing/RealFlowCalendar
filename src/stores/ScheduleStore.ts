@@ -133,27 +133,45 @@ export const ScheduleStore = defineStore('schedule', () => {
                 originalEvent,
                 newEvent
               );
+              console.log(updatedOriginal.exceptions);
+              weeklyCache.value.forEach((events, weekKey) => {
+                const filtered = events.filter(e =>
+                  e.id !== newEvent.id
+                );
+                weeklyCache.value.set(weekKey, filtered);
+              });
+
+              // 生成新重复事件
+              const recurrenceEvents = RecurrenceService.generateRecurrenceEvents(
+                updatedOriginal,
+                updatedOriginal.start,
+                new Date(updatedOriginal.start.getFullYear() + 1, updatedOriginal.start.getMonth(), updatedOriginal.start.getDate())
+              ).filter(Boolean);
+
+              // 更新缓存和后端
               repeatEvents.value.events.set(originalEvent.id, updatedOriginal);
+              recurrenceEvents.forEach(event => {
+                const weekKey = getWeekKey(event.start);
+                weeklyCache.value.set(weekKey, [...(weeklyCache.value.get(weekKey) || []), event]);
+              });
+
+              
               const payload = {
                 ...updatedOriginal,
                 start: updatedOriginal.start.toISOString(),
                 end: updatedOriginal.end.toISOString(),
               };
 
-              await axios.put(`/api/events/${originalEvent.id}`, payload);
-              addEvent(independentEvent); // 添加独立事件
-              // 更新缓存中的单个实例
-              const weekKey = getWeekKey(newEvent.start);
-              const weekEvents = weeklyCache.value.get(weekKey) || [];
-              const index = weekEvents.findIndex(e => e.id === newEvent.id);
-              if (index !== -1) {
-                weekEvents[index] = newEvent;
-                weeklyCache.value.set(weekKey, weekEvents);
-              }
+              await addEvent(independentEvent); // 添加独立事件
+              fetchWeekEventsFromCache(useDateDisplay.selectedDate);
+              useEventData.selectedIndex = -1;
+              await axios.put(`/api/events/${originalEvent.id}`, payload);              
               return;
             }
           }).catch((action: string) => {
             if (action === 'cancel') {
+              console.log('quangai');
+
               const originalId = newEvent.originalEventId;
               if (!originalId) return;
 
@@ -218,6 +236,7 @@ export const ScheduleStore = defineStore('schedule', () => {
         return
         }
       }
+      console.log('zhengchanggai');
 
       weeklyCache.value.forEach((events, weekKey) => {
         const filtered = events.filter(e =>
