@@ -169,7 +169,7 @@ onMounted(() => {
   display: flex;
 }
 .time-axis {
-  width: 5%;
+  width: 36px;
 }
 .CalendarDisplay {
   width: 95%;

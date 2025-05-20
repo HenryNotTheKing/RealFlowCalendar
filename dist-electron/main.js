@@ -5,8 +5,8 @@ let __filename = url.fileURLToPath(import.meta.url);
 let __dirname = path.dirname(__filename);
 const createWindow = () => {
   const mainWindow = new BrowserWindow({
-    width: 1600,
-    height: 900,
+    width: 1200,
+    height: 700,
     icon: "electron/resource/image/Icon.ico",
     autoHideMenuBar: true,
     // 新增以下配置关闭控制台窗口

@@ -79,14 +79,14 @@ export class RecurrenceService {
   ): ScheduleEvent[] {
       // 添加时间范围限制
       const queryEnd = originalEvent.recurrence.endCondition === 'untilDate' && originalEvent.recurrence.endDate
-          ? new Date(Math.min(endDate.getTime(), originalEvent.recurrence.endDate.getTime()))
-          : endDate;
+        ? new Date(Math.min(endDate.getTime(), originalEvent.recurrence.endDate.getTime()))
+        : endDate;
   
       // 创建包含完整时间范围的规则集
       const ruleSet = new RRuleSet()
       const rrule = this.createRRule(originalEvent)
       ruleSet.rrule(rrule)
-  
+
       // 设置精确的时间范围（包含全天）
       const adjustedStart = dayjs(startDate).startOf('day').toDate()
       const adjustedEnd = dayjs(queryEnd).endOf('day').toDate()
@@ -98,14 +98,50 @@ export class RecurrenceService {
           originalEvent.exceptions?.map(d => dayjs(d).startOf('day').valueOf()) || []
       );
   
-      return dates
-          .map(date => this.createEventInstance(originalEvent, date))
-          .filter(instance => {
+    return dates
+      .map(date => {
+        // 保留原始时间部分
+        const adjustedDate = new Date(date);
+        adjustedDate.setHours(
+          originalEvent.start.getHours(),
+          originalEvent.start.getMinutes(),
+          originalEvent.start.getSeconds()
+        );
+        return this.createEventInstance(originalEvent, adjustedDate);
+      })
+      .filter(instance => {
               const instanceDayStart = dayjs(instance.start).startOf('day').valueOf();
               return !exceptionsSet.has(instanceDayStart);
           });
   }
-  // 删除单个事件实例
+
+  // 创建RRule实例
+  private static createRRule(event: ScheduleEvent): RRule {
+    const options: Partial<Options> = {
+        dtstart: event.start,
+        freq: this.getFrequency(event.recurrence.type),
+        interval: event.recurrence.interval,
+    }
+
+    // 处理星期规则
+    if (event.recurrence.daysOfWeek) {
+      options.byweekday = event.recurrence.daysOfWeek.map(day => 
+          [RRule.SU, RRule.MO, RRule.TU, RRule.WE, RRule.TH, RRule.FR, RRule.SA][day]
+      )
+  }
+
+    switch (event.recurrence.endCondition) {
+      case 'untilDate':
+        options.until = event.recurrence.endDate
+        break
+      case 'occurrences':
+        options.count = event.recurrence.occurrences
+        break
+    }
+
+    return new RRule(options)
+  }
+
   static deleteOccurrence(
     originalEvent: ScheduleEvent,
     occurrenceDate: Date
@@ -150,56 +186,6 @@ export class RecurrenceService {
     }
   }
 
-
-
-  // 创建RRule实例
-  private static createRRule(event: ScheduleEvent): RRule {
-    const options: Partial<Options> = {
-        dtstart: event.start,
-        freq: this.getFrequency(event.recurrence.type),
-        interval: event.recurrence.interval,
-    }
-
-    // 处理星期规则
-    if (event.recurrence.daysOfWeek) {
-      options.byweekday = event.recurrence.daysOfWeek.map(day => 
-          [RRule.SU, RRule.MO, RRule.TU, RRule.WE, RRule.TH, RRule.FR, RRule.SA][day]
-      )
-  }
-
-    switch (event.recurrence.endCondition) {
-      case 'untilDate':
-        options.until = event.recurrence.endDate
-        break
-      case 'occurrences':
-        options.count = event.recurrence.occurrences
-        break
-    }
-
-    return new RRule(options)
-  }
-
-  // 检查时间冲突
-  private static hasConflict(
-    instance: ScheduleEvent,
-    allEvents: ScheduleEvent[]
-  ): boolean {
-    return allEvents.some(e =>
-      !e.originalEventId && // 只检查独立事件
-      dayjs(e.start).isSame(instance.start, 'day') &&
-      e.id !== instance.id
-    )
-  }
-
-  // 检查是否为手动排除的实例
-  private static isException(
-    instance: ScheduleEvent,
-    original: ScheduleEvent
-  ): boolean {
-    return original.exceptions?.some(ex =>
-      dayjs(ex).isSame(instance.start, 'day')
-    ) || false
-  }
   // 创建事件实例
   private static createEventInstance(
     original: ScheduleEvent,

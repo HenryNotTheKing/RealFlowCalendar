@@ -3,11 +3,14 @@ from flask.views import MethodView
 from extension import db, cors
 from models import ScheduleEvent, Categories
 from datetime import datetime, timezone
-from openai import OpenAI
 from dotenv import load_dotenv
+from Agents import Agents
+from flask_socketio import SocketIO, emit
 import os
 
 load_dotenv()
+agents = Agents(os.getenv("DASHSCOPE_API_KEY"))
+
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(os.path.dirname(__file__), "database.sqlite")}'
@@ -213,7 +216,24 @@ class CategoriesAPI(MethodView):
         except Exception as e:
             db.session.rollback()
             return jsonify({'error': str(e)}), 500
-
+        
+    @staticmethod
+    def get_formatted_names(separator="\n"):
+        """获取所有分类名称的格式化字符串"""
+        try:
+            categories = Categories.query.all()
+            return separator.join([c.name for c in categories])
+        except Exception as e:
+            print(f"获取分类名称失败: {str(e)}")
+            return ""
+    @staticmethod
+    def name_exists(name):
+        """检查分类名称是否存在"""
+        try:
+            return bool(Categories.query.filter_by(name=name).first())
+        except Exception as e:
+            print(f"数据库查询失败: {str(e)}")
+            return False
 # 注册路由
 app.add_url_rule('/api/events', view_func=ScheduleEventAPI.as_view('events_api'), methods=['POST'])
 app.add_url_rule('/api/events/<string:event_id>', view_func=ScheduleEventAPI.as_view('event_api'), methods=['PUT', 'DELETE'])
@@ -234,47 +254,82 @@ def reset_db():
         db.create_all()
         print("数据库已重置")
         
-client = OpenAI(
-    api_key=os.getenv("DASHSCOPE_API_KEY"),
-    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
-)
+app.config['SECRET_KEY'] = os.urandom(24)
+socketio = SocketIO(app, cors_allowed_origins="*")
 
-@app.route('/chat', methods=['POST'])
-def chat():
-    data = request.json
+# WebSocket 事件处理
+@socketio.on('connect')
+def handle_connect():
+    print('Client connected')
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    print('Client disconnected')
+
+
+session_context = {}
+@socketio.on('message')
+def handle_message(data):
     try:
-        # 根据类型构建不同消息结构
-        msg_type = data.get('type', 'text')
-        
-        messages = [{"role": "system", "content": "你是一个日程管理助手，可以理解图片中的日程信息,对于其他的问题不予回答。如果图片中没有日程信息，请回答“图片中没有日程信息”，不用分析图片中的内容。"}]
-        
-        if msg_type == 'text':
-            messages.append({
-                "role": "user", 
-                "content": data['message']
-            })
-        elif msg_type == 'img':
-            messages.append({
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": "请分析这张图片中的日程信息"},
-                    {"type": "image_url", "image_url": {
-                        "url": f"{data['imageBase64']}"
-                    }}
-                ]
-            })
+        session_id = data.get('session_id', request.sid)  # 获取当前会话的唯一ID
+        current_context = session_context.get(session_id, {})
+        # 使用现有业务逻辑处理消息
+        if data.get('type') == 'text':
+            if 'original_message' in current_context:
+            # 合并历史问题和当前回答
+                combined_message = f"{current_context['original_message']}\n提问:\n{current_context['exam_question']}\n用户回答:\n{data['message']}"
+                if 'supplementary_info' in current_context:
+                    current_context['supplementary_info'] += data['message']
+                else:
+                    current_context['supplementary_info'] = data['message']
+                exam_result = agents.exam(combined_message)
+            else:
+                # 首次处理消息
+                exam_result = agents.exam(data['message'])
+            if "True" in exam_result:
+                # 使用合并后的消息生成事件
+                emit('message', {'content': '日程生成中...'}, room=session_id)
+                if 'original_message' in current_context:
+                    new_event = agents.structure_output(combined_message)
+                else:
+                    new_event = agents.structure_output(data['message'])
+                # 保存事件到数据库
+                with app.test_client() as client:
+                    client.post('/api/events', json=new_event)
+                    if not CategoriesAPI.name_exists(new_event['category']):
+                        client.post('/api/categories', json={
+                            'name': new_event['category'],
+                            'color': 'Blue'})
+                
+                # 推送事件和成功消息
+                emit('event_created', {'event': new_event})
+                emit('message', {'content': '日程创建成功'})
+                
+                # 清除会话上下文
+                if session_id in session_context:
+                    del session_context[session_id]
+                    
+            else:
+                # 存储对话上下文
+                session_context[session_id] = {
+                    'original_message': data['message'],
+                    'exam_question': exam_result
+                }
+                # 发送追问信息
+                emit('message', {'content': exam_result})
         else:
-            return jsonify({"error": "不支持的请求类型"}), 400
-        completion = client.chat.completions.create(
-            model="qwen2.5-vl-72b-instruct",
-            messages=messages
-        )
-        return jsonify({
-            "reply": completion.choices[0].message.content
-        })
+            if 'exam_question' in current_context:
+            # 合并上下文信息
+                print("1111")
+                supplement = f"提问：{current_context['exam_question']}\n回复：{data['message']}"
+                # 重新执行处理流程
+                agents.extract(current_context['imageBase64'], socketio, session_id, session_context, supplement)
+                
+            else:
+                print("2222")
+                agents.extract(data['imageBase64'], socketio, session_id, session_context)
     except Exception as e:
-        print(f"Error: {e}")
-        return jsonify({"error": str(e)}), 500
+        emit('error', {'message': str(e)})
     
 if __name__ == '__main__':
     db_path = app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', '')
@@ -285,4 +340,4 @@ if __name__ == '__main__':
         with app.app_context():
             db.create_all()
     
-    app.run(debug=True)
+    socketio.run(app, debug=True)

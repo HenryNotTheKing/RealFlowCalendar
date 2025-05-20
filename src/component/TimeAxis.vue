@@ -51,7 +51,7 @@ const currentTimeStyle = computed(() => ({
 .time-label {
   position: absolute;
   color: #999999;  /* 浅灰色 */
-  font-size: 12px;
+  font-size: 10px;
   text-align: right;
   right: 4px;
   white-space: nowrap;
@@ -65,14 +65,15 @@ const currentTimeStyle = computed(() => ({
   top: 50%;                   
   transform: translateY(-50%);
   text-align: right;
-  right: 4px;
-  height: 20px;  
-  width: 36px;
+  right: 2px;
+  height: 18px;  
+  width: 30px;
   border-radius: 4px;
   background-color: #ff4444;  /* 线的颜色 */
   font-size: 12px;
   color: white;
   display: flex;
+  font-size: 11px;
   align-items: center;    /* 垂直居中 */
   justify-content: center; /* 水平居中 */
   user-select: none;

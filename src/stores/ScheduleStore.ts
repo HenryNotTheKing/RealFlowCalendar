@@ -87,6 +87,8 @@ export const ScheduleStore = defineStore('schedule', () => {
 
   async function addEvent(newEvent: ScheduleEvent) {
     try {
+      newEvent.start = new Date(newEvent.start);
+      newEvent.end = new Date(newEvent.end);
       const weekKey = getWeekKey(newEvent.start);
       const weekEvents = weeklyCache.value.get(weekKey) || [];
       weeklyCache.value.set(weekKey, [...weekEvents, newEvent]);
@@ -96,6 +98,7 @@ export const ScheduleStore = defineStore('schedule', () => {
         end: newEvent.end.toISOString(),
         exceptions: newEvent.exceptions?.map(d => d.toISOString()) || []
       };
+
       await axios.post('/api/events', payload);
 
     } catch (error) {
@@ -103,7 +106,46 @@ export const ScheduleStore = defineStore('schedule', () => {
       throw error;
     }
   }
+  async function addEventFromAi(newEvent: ScheduleEvent) {
+  try {
+    // 基础时间处理
+    newEvent.start = new Date(newEvent.start);
+    newEvent.end = new Date(newEvent.end);
+    
+    // 处理重复事件
+    if (newEvent.repeat) {
+      // 生成未来一年的重复事件
+      const recurrenceEvents = RecurrenceService.generateRecurrenceEvents(
+        newEvent,
+        newEvent.start,
+        new Date(newEvent.start.getFullYear() + 1, newEvent.start.getMonth(), newEvent.start.getDate())
+      );
 
+      // 更新缓存
+      recurrenceEvents.forEach(event => {
+        const weekKey = getWeekKey(event.start);
+        const weekEvents = weeklyCache.value.get(weekKey) || [];
+        weeklyCache.value.set(weekKey, [...weekEvents, event]);
+      });
+
+      // 添加主事件到重复集合
+      repeatEvents.value.ids.add(newEvent.id);
+      repeatEvents.value.events.set(newEvent.id, newEvent);
+    }
+
+    // 添加主事件到周缓存
+    const weekKey = getWeekKey(newEvent.start);
+    const weekEvents = weeklyCache.value.get(weekKey) || [];
+    weeklyCache.value.set(weekKey, [...weekEvents, newEvent]);
+
+    fetchWeekEventsFromCache(useDateDisplay.selectedDate);
+    await fetchCategories();
+    categories.value = [...categories.value];
+  } catch (error) {
+    console.error('AI创建事件失败:', error);
+    throw error;
+  }
+}
   async function updateEvent(newEvent: ScheduleEvent) {
     try {
       // 判断是否是重复事件实例
@@ -133,7 +175,6 @@ export const ScheduleStore = defineStore('schedule', () => {
                 originalEvent,
                 newEvent
               );
-              console.log(updatedOriginal.exceptions);
               weeklyCache.value.forEach((events, weekKey) => {
                 const filtered = events.filter(e =>
                   e.id !== newEvent.id
@@ -170,7 +211,6 @@ export const ScheduleStore = defineStore('schedule', () => {
             }
           }).catch((action: string) => {
             if (action === 'cancel') {
-              console.log('quangai');
 
               const originalId = newEvent.originalEventId;
               if (!originalId) return;
@@ -236,30 +276,22 @@ export const ScheduleStore = defineStore('schedule', () => {
         return
         }
       }
-      console.log('zhengchanggai');
 
       weeklyCache.value.forEach((events, weekKey) => {
         const filtered = events.filter(e =>
           e.id !== newEvent.id
         );
-        filtered.push(newEvent);
+        if (!newEvent.repeat) filtered.push(newEvent);
         weeklyCache.value.set(weekKey, filtered);
       });
       if (newEvent.repeat) {
-        weeklyCache.value.forEach((events, weekKey) => {
-          const filtered = events.filter(e =>
-            e.id !== newEvent.id
-          );
-          weeklyCache.value.set(weekKey, filtered);
-        });
-
         // 生成新重复事件
         const recurrenceEvents = RecurrenceService.generateRecurrenceEvents(
           newEvent,
           newEvent.start,
           new Date(newEvent.start.getFullYear() + 1, newEvent.start.getMonth(), newEvent.start.getDate())
         ).filter(Boolean);
-
+        
         // 更新缓存和后端
         repeatEvents.value.events.set(newEvent.id, newEvent);
         recurrenceEvents.forEach(event => {
@@ -268,6 +300,7 @@ export const ScheduleStore = defineStore('schedule', () => {
         });
 
       }
+
       fetchWeekEventsFromCache(useDateDisplay.selectedDate);
       const payload_ = {
         ...newEvent,
@@ -531,5 +564,7 @@ export const ScheduleStore = defineStore('schedule', () => {
     createCategory,
     updateCategory,
     deleteCategory,
+    fetchWeekEventsFromBackend,
+    addEventFromAi
   };
 });

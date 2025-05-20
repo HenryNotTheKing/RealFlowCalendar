@@ -61,7 +61,7 @@
                 </el-col>
             </el-form-item>
             <el-form-item label="地点">
-                <el-input v-model="useEventData.currentEvent.location" />
+                <el-input v-model="useEventData.currentEvent.location" type="textarea"/>
             </el-form-item>
             <el-form-item label="描述">
                 <el-input v-model="useEventData.currentEvent.description" type="textarea" />
@@ -111,7 +111,7 @@
                     <el-date-picker v-model="dialogRecurrence.endDate" placeholder="选择结束日期" 
                     :disabled-date="(date: Date) => {
                       const start = useEventData.currentEvent.start;
-                     return start ? date < new Date(start.setHours(0,0,0,0)) : false;
+                     return start ? date < new Date(new Date(start).setHours(0,0,0,0)) : false;
                     }"/>
                 </el-form-item>
             </el-form>
@@ -131,8 +131,6 @@ import { ScheduleStore } from '../stores/ScheduleStore'
 import { EventData } from '../stores/EventData';
 import { cloneDeep } from 'lodash-es'
 import type { RecurrenceRule } from '../types/schedule';
-import { ElMessageBox } from 'element-plus'
-
 const useEventData = EventData();
 const useScheduleStore = ScheduleStore();
 
@@ -158,6 +156,7 @@ watch(() => useEventData.currentEvent, (newVal) => {
                 title: '新事项',
             }
         }
+        
         useScheduleStore.updateEvent(newVal);
     }
 }, { deep: true, immediate: true });
@@ -201,7 +200,7 @@ const handleRepeatSwitch = async (val: boolean) => {
 
 // 确认设置
 const confirmRepeat = () => {
-    Object.assign(useEventData.currentEvent.recurrence, {...dialogRecurrence.value,interval: Number(dialogRecurrence.value.interval + 1)})
+    Object.assign(useEventData.currentEvent.recurrence, {...dialogRecurrence.value,interval: Number(dialogRecurrence.value.interval + 1), endDate: dialogRecurrence.value.endDate ? dayjs(dialogRecurrence.value.endDate).add(1, 'day').toDate() : null})
     showRepeatDialog.value = false;
 }
 

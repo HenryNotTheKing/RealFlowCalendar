@@ -16,13 +16,13 @@ body {
 }
 
 .right-bar{
-  width: 320px;
+  width: 260px;
   height: inherit;
   background-color: white; 
 }
 .left-bar {
   height: inherit;
-  width: 300px;
+  width: 260px;
   background-color: #f7f7f7; 
 }
 .center-bar {
@@ -39,14 +39,14 @@ body {
 
 
 .right-panel{
-  width: 320px;
+  width: 260px;
   background-color: white; 
   flex-shrink: 0;
   display: flex; 
   justify-content: center;
 }
 .left-panel {
-  width: 300px;
+  width: 260px;
   background-color: #f7f7f7; 
   flex-shrink: 0;
   display: flex; 
@@ -70,7 +70,7 @@ body {
 }
 
 .sub-right-panel {
-  width: 320px;
+  width: 260px;
   background-color:  white; 
   flex-shrink: 0;
 
@@ -81,7 +81,7 @@ body {
 .sub-left-panel {
   position: relative;
   top: 60px;
-  width: 300px;
+  width: 260px;
   height: 100%;
   background-color: #f7f7f7; 
   flex-shrink: 0;
@@ -144,7 +144,7 @@ body {
 .divideline_left {
   position: fixed;  /* 改为固定定位 */
   top: 0;
-  left: 300px;
+  left: 260px;
   height: 100vh;    /* 使用视窗高度 */
   width: 1px;
   background-color: #F0F0F0;
@@ -153,7 +153,7 @@ body {
 .divideline_right {
   position: fixed;  /* 改为固定定位 */
   top: 0;
-  right: 320px;
+  right: 260px;
   height: 100vh;    /* 使用视窗高度 */
   width: 1px;
   background-color: #F0F0F0;

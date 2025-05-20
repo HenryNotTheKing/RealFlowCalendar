@@ -266,7 +266,6 @@ const getRectTimeRange = (rect: Rect) => {
   return {
         start: startTime,
         end: endTime,
-        title: '新事项',
   };
 }
 
@@ -455,7 +454,7 @@ function handleMove(event: { clientX: number; clientY: number; }) {
           if (!isOverlapping || previewRowCount === 0) {
               currentRow.value = newCurrentRow;
               useEventData.resetRecurrence();
-              useEventData.currentEvent = {...useEventData.currentEvent, ...getRectTimeRange(previewRect), repeat: false};
+              useEventData.currentEvent = {...useEventData.currentEvent, ...getRectTimeRange(previewRect), repeat: false, title: '新事项'};
           }
           break;
       }
@@ -576,7 +575,8 @@ function stopInteraction(event: {clientX: any; clientY: any}) {
       const originalEvent = { ...useEventData.currentWeekEvents[index]};
         useScheduleStore.updateEvent({
           ...originalEvent,
-          ...useEventData.currentEvent,
+          start: useEventData.currentEvent.start,
+          end: useEventData.currentEvent.end,
           id: originalEvent.id
         })
       
