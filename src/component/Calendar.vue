@@ -257,9 +257,9 @@ export default {
 <style scoped>
 /* 全局容器样式 */
 .chen-calendar {
-  height: 250px;
+  height: 240px;
   width: 100%;
-  max-width: 250px;
+  max-width: 240px;
   margin: 0 auto;
   font-family: Avenir, Helvetica, Arial, sans-serif;
   color: #2c3e50;
@@ -281,12 +281,12 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0px;
+  padding: 0 4px;
   margin-top: 16px;
 }
 
 .month-text {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: bold;
   color: #000000;
   display: flex;
@@ -323,6 +323,7 @@ export default {
   align-items: center;
   justify-content: space-between;
   color: #999999;
+  padding: 0 15px; 
 }
 
 .week-item {
@@ -338,7 +339,7 @@ export default {
   flex-wrap: wrap;
   justify-content: space-between;
   margin: 0; 
-  padding: 0; 
+  padding: 0 15px; 
   margin-left: 0px; 
 }
 
@@ -347,11 +348,12 @@ export default {
   flex-wrap: wrap;
   width: 100%;
   justify-content: center;
+
 }
 
 .calendar-date {
   width: calc(100% / 7);
-  height: 28px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -364,8 +366,8 @@ export default {
 .calendar-date:hover::before {
   content: '';
   position: absolute;
-  width: 28px;  /* 自定义宽度 */
-  height: 28px; /* 自定义高度 */
+  width: 24px;  /* 自定义宽度 */
+  height: 24px; /* 自定义高度 */
   background: #dedede;
   border-radius: 8px;
   top: 50%;
@@ -381,12 +383,13 @@ export default {
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  font-size: 16px;
+  font-size: 14px;
+  
 }
 
 .date-selected {
-  height: 28px;
-  width: 28px;
+  height: 24px;
+  width: 24px;
   background-color: #f04842 !important;
   color: #ffffff !important;
   margin-top:2px;
@@ -394,8 +397,8 @@ export default {
 }
 
 .date-today {
-  height: 28px;
-  width: 28px;
+  height: 24px;
+  width: 24px;
   border: 2px solid #f04842;
   color: #f04842;
 }

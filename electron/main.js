@@ -1,4 +1,5 @@
 import { app, BrowserWindow } from "electron"
+import { protocol } from 'electron'
 import url from 'url'
 import path from 'path'
 
@@ -10,7 +11,7 @@ const createWindow = () => {
     const mainWindow = new BrowserWindow({
         width: 1200,
         height: 700,
-        icon: "electron/resource/image/Icon.ico",
+        icon: "electron/resource/image/Icon3.png",
         autoHideMenuBar: true,
         // 新增以下配置关闭控制台窗口
         webPreferences: {
@@ -29,14 +30,25 @@ const createWindow = () => {
     })
     //mainWindow.loadURL("http://localhost:5173")
     //VITE DEV_SERVER URL是开发服务器的ur1,只在开发环境中存在
+    
     if(process.env['VITE_DEV_SERVER_URL']){
         mainWindow.loadURL(process.env['VITE_DEV_SERVER_URL'])
         }else{
-        mainWindow.loadFile('dist/index.html')
-        //mainWindow.loadFile(path.resolve(dirname,"../dist/index.html"))
+        //mainWindow.loadFile('dist/index.html')
+        mainWindow.loadFile(path.resolve(__dirname,"../dist/index.html"))
         }
 }
 //当应用准备就绪后创建窗口
 app.whenReady().then(() => {
     createWindow()
 })
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'app',
+    privileges: {
+      secure: true,
+      standard: true,
+      supportFetchAPI: true
+    }
+  }
+])

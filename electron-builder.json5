@@ -2,7 +2,7 @@
     "productName": "Flow Calendar",
     "appId": "com.flowcalendar.www",
     "win": {
-        "icon": "electron/resource/image/Icon.ico",
+        "icon": "electron/resource/image/Icon3.png",
         "target": [
             {
                 "target": "nsis",
@@ -18,10 +18,15 @@
         "allowToChangeInstallationDirectory": true
     },
     "files": [
+        "build/**/*",
+        "main.js",
+        "dist/**/*",
+        "public/preload.js",
         "dist",
         "dist-electron"
     ],
     "directories": {
         "output": "build"
-    }
+    },
+    "asar": false 
 }

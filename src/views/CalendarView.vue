@@ -25,7 +25,7 @@
         <TimeAxis />
       </div>
       <div class="CalendarDisplay" ref="parentRef">
-        <CalendarDisplay :canvasWidth="parentWidth" :canvasHeight="parentHeight" />
+        <CalendarDisplay />
       </div>
     </div>
   </div>
@@ -41,13 +41,14 @@ import DayAxis from '../component/DayAxis.vue';
 import TimeAxis from '../component/TimeAxis.vue';
 import Calendar from '../component/Calendar.vue';
 import EventForm from '../component/EventForm.vue';
-import catagoryPicker from '../component/catagoryPicker.vue';
+import catagoryPicker from '../component/CatagoryPicker.vue';
 import { ref, onMounted} from 'vue';
 import { DateDisplay } from '../stores/DateDisplay.js';
 import { ScheduleStore } from '../stores/ScheduleStore'
+import { CanvasParams } from '../stores/CanvasParams.js';
 const useScheduleStore = ScheduleStore();
 const useDateDisplay = DateDisplay();
-
+const useCanvasParams = CanvasParams();
 function formatMonth(date: { getMonth: () => any; }){
   const month = date.getMonth(); // 月份从0开始，所以需要加1
   const Months = [
@@ -57,20 +58,23 @@ function formatMonth(date: { getMonth: () => any; }){
   return Months[month];
 }
 const parentRef = ref(null);
-const parentWidth = ref(0);
-const parentHeight = ref(0);
-
 const timeAxisRef = ref(null);
+
 const timeAxisWidth = ref(0);
 
-
-onMounted(() => {
-
+async function init() {
   useScheduleStore.updateWeekEvents(useDateDisplay.selectedDate);
-  useScheduleStore.fetchCategories();
+  await useScheduleStore.fetchCategories();
+  if (useScheduleStore.categories.length === 0) {
+    useScheduleStore.createCategory({name: '日程', color: 'Blue'});
+  }
+}
+
+ onMounted(() => {
+
   const resizeObserver = new ResizeObserver((entries) => {
     for (const entry of entries) {
-      parentWidth.value = entry.contentRect.width;
+      useCanvasParams.canvasWidth = entry.contentRect.width;
     }
   });
   if (parentRef.value) {
@@ -85,6 +89,9 @@ onMounted(() => {
   if (timeAxisRef.value) {
     timeAxisObserver.observe(timeAxisRef.value);
   }
+
+  init();
+
   // 在组件卸载时停止监听
   return () => {
     if (parentRef.value) {
@@ -92,6 +99,7 @@ onMounted(() => {
     }
   };
 });
+
 </script>
 
 <style scoped>
@@ -172,7 +180,7 @@ onMounted(() => {
   width: 36px;
 }
 .CalendarDisplay {
-  width: 95%;
+  width: calc(100% - 36px);
 }
 .day-axis {
   display: block

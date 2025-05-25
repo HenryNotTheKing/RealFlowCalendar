@@ -8,14 +8,15 @@
     <div class="container">
      <div class="left-panel">
       <div class="button-bar" @click="useChatParams.isChatBoxVisible=false">
-        <router-link to = "/" class="btn-gray"><img src=".\assets\Icons\Calendar.svg" alt="calendar"></router-link>
-        <router-link to = "/Gantt" class="btn-gray"><img src=".\assets\Icons\CheckSquare.svg" alt="calendar"></router-link>
-        <router-link to = "/Todo" class="btn-gray"><img src=".\assets\Icons\Table.svg" alt="calendar"></router-link>
+        <router-link to = "/" class="btn-gray"><img src=".\assets\Icons\Calendar.svg" alt="calendar" class="icon-change-page"></router-link>
+        <router-link to = "/Gantt" class="btn-gray"><img src=".\assets\Icons\CheckSquare.svg" alt="calendar" class="icon-change-page"></router-link>
+        <router-link to = "/Todo" class="btn-gray"><img src=".\assets\Icons\Table.svg" alt="calendar" class="icon-change-page"></router-link>
       </div>
      </div>
      <div class="center-panel"></div>
      <div class="right-panel"><ChatBox v-if="useChatParams.isChatBoxVisible" />
-      <div class="chat-button">
+      <div class="chat-button"
+          :class="{ send: useChatParams.isChatBoxVisible }">
           <img class="icon-send" 
             src=".\assets\Icons\send.svg" 
             alt="send" 
@@ -32,7 +33,13 @@
 <script setup>
 import ChatBox from './component/ChatBox.vue';
 import { ChatParams } from './stores/ChatParams';
+import { useRouter } from 'vue-router'
 const useChatParams = ChatParams();
+
+const router = useRouter()
+router.push('/').catch(err => {
+    console.log('Navigation duplicate:', err)
+})
 </script>
 
 <style>
@@ -46,25 +53,28 @@ const useChatParams = ChatParams();
   right: 30px;       
   z-index: 999;        
   display: flex;       
-  transition: all 0.2s ease-in-out;
+  transition: all 0.5s ease-in-out;
 }
 .chat-button:hover {
   background-color: #d3d3d3;
-  transition: all 0.2s ease-in-out;
+  transition: all 0.5s ease-in-out;
 }
-
+.chat-button.send {
+ transform: translateX(20px); 
+ transition: all 0.5s ease-in-out;
+}
 .icon-send {
   rotate: -90deg;
   transform: translateX(-3px) translateY(3px);
   width: 30px;         
   height: 30px;       
   margin: auto;
-  transition: transform 0.3s ease;        
+  transition: transform 0.5s ease;        
 }
 
 .icon-send.rotated {
   transform: rotate(90deg);
-  transition: transform 0.3s ease;
+  transition: transform 0.5s ease;
 }
 img {
   user-select: none;

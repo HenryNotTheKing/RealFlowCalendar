@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from "electron";
+import { app, protocol, BrowserWindow } from "electron";
 import url from "url";
 import path from "path";
 let __filename = url.fileURLToPath(import.meta.url);
@@ -7,7 +7,7 @@ const createWindow = () => {
   const mainWindow = new BrowserWindow({
     width: 1200,
     height: 700,
-    icon: "electron/resource/image/Icon.ico",
+    icon: "electron/resource/image/Icon3.png",
     autoHideMenuBar: true,
     // 新增以下配置关闭控制台窗口
     webPreferences: {
@@ -26,12 +26,23 @@ const createWindow = () => {
     minHeight: 600,
     useContentSize: true
   });
+  mainWindow.webContents.openDevTools();
   if (process.env["VITE_DEV_SERVER_URL"]) {
     mainWindow.loadURL(process.env["VITE_DEV_SERVER_URL"]);
   } else {
-    mainWindow.loadFile("dist/index.html");
+    mainWindow.loadFile(path.resolve(__dirname, "../dist/index.html"));
   }
 };
 app.whenReady().then(() => {
   createWindow();
 });
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: "app",
+    privileges: {
+      secure: true,
+      standard: true,
+      supportFetchAPI: true
+    }
+  }
+]);

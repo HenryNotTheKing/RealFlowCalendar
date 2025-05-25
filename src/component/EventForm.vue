@@ -6,8 +6,7 @@
                     v-model="useEventData.currentEvent.category" 
                     placeholder="请选择" 
                     class="custom-select"
-                    id="category"
-                >
+                    id="category">
                     <el-option v-for="item in useScheduleStore.options" :key="item.value" :label="item.label" :value="item.value"
                         class="custom-option" />
                 </el-select>
@@ -19,16 +18,16 @@
                 />
             </el-form-item>
             <el-form-item label="时间">
-                <el-col :span="8">
+                <el-col :span="10">
                     <el-time-picker v-model="useEventData.currentEvent.start" format="HH:mm" :show-seconds="false" placeholder="开始"
-                        style="width: 100%; font-size: 13px" :clearable="false" :disabled-hours="disableStartHours" :disabled-minutes="disableStartMinutes" @change="console.log(useEventData.currentWeekEvents)"/>
+                        style="width: 100%; font-size: 13px" :clearable="false" :disabled-hours="disableStartHours" :disabled-minutes="disableStartMinutes" class="custom-time-picker"/>
                 </el-col>
-                <el-col :span="2" class="text-center">
+                <el-col :span="4" class="text-center">
                     <div style="display: flex; justify-content: center; color: #3d3d3d">-</div>
                 </el-col>
-                <el-col :span="8">
+                <el-col :span="10">
                     <el-time-picker v-model="useEventData.currentEvent.end" format="HH:mm" :show-seconds="false" placeholder="结束"
-                        style="width: 100%; font-size: 13px" :clearable="false"  :disabled-hours="disableEndHours" :disabled-minutes="disableEndMinutes"/>
+                        style="width: 100%; font-size: 13px" :clearable="false"  :disabled-hours="disableEndHours" :disabled-minutes="disableEndMinutes" class="custom-time-picker"/>
                 </el-col>
                 <el-col :span="24">
                     <el-form-item style="margin-left: 0">
@@ -274,4 +273,12 @@ const disableEndMinutes = (selectedHour: number) => {
     border-radius: 8px;
     background-color: #fff5f5;
 }
+.custom-select {
+    width: 160px;
+}
+.custom-time-picker:deep(.el-input--prefix .el-input__prefix) {
+    display: none !important;
+}
+
+
 </style>

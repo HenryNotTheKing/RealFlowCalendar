@@ -19,7 +19,7 @@
                 @blur="useScheduleStore.updateCategory(category.id, { name: category.name })"
             >
             <div class="delete-icon" @click="deleteCategory(category.id)">
-                <img src="../assets/Icons/delete.svg" alt="ADD" class="add-icon" />
+                <img src="../assets/Icons/delete.svg" alt="delete" class="delete-icon" />
         </div>
         </div>
         
@@ -177,8 +177,8 @@ const addCategory = () => {
     border-radius: 6px;
 }
 .color-display{
-   height: 16px;
-   width: 16px;
+   height: 14px;
+   width: 14px;
    border-radius: 4px;
    background-color: #000000;
    margin-left: 4px;
@@ -188,7 +188,6 @@ const addCategory = () => {
 .text-display{
     font-size: 14px;
     color: #868686;
-    margin-left: 8px;
     user-select: none;
     width: 90%;
     height: 28px;
@@ -207,8 +206,15 @@ const addCategory = () => {
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 20px;
-    width: 20px;
+    height: 18px;
+    width: 18px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+.delete-icon:hover{
+    background-color: #efefef;
+    transition: all 0.2s ease-in-out;
 }
 .text-display:focus {
     background-color: #efefef;
@@ -217,17 +223,16 @@ const addCategory = () => {
     background-color: #efefef;
 }
 .add-icon{
-    margin-left: 11px;
+    margin-left: 10px;
 }
 .text-add{
-    font-size: 14px;
     color: #868686;
-    margin-left: 8px;
+    margin-left: 11px;
     user-select: none;
     width: 90%;
     height: 24px;
     border-radius: 4px;
-    font-size: 14px;
+    font-size: 13px;
 }
 .add-catagory:hover{
     background-color: #efefef;

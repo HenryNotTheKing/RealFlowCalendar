@@ -26,6 +26,7 @@
         @paste.native="handlePaste"
         placeholder="请输入..."
         class="text-input"
+        width="100px"
         v-if="useChatParams.isChatBoxVisible"
       />
     </transition>
@@ -99,7 +100,7 @@ const formatTime = (date: Date) => {
 
 <style scoped>
 .message-fade-enter-active,.message-fade-appear-active {
-  transition: all 0.3s ease-out;
+  transition: all 0.s ease-out;
 }
 
 .message-fade-enter-from,.message-fade-appear-from {
@@ -125,7 +126,7 @@ const formatTime = (date: Date) => {
 }
 
 .input-slide-enter-active {
-  transition: all 0.2s 
+  transition: all 0.5s 
 }
 
 
@@ -141,7 +142,7 @@ const formatTime = (date: Date) => {
     right: 90px;
     bottom: 80px;
     /* 新增初始位置 */
-    width: 200px;
+    width: 100px;
 }
 
 .chat-box {
@@ -182,6 +183,7 @@ const formatTime = (date: Date) => {
   padding: 12px;
   border-radius: 12px;
   margin: 4px 0;
+  font-size: 14px;
 }
 
 .user .bubble {
@@ -200,9 +202,9 @@ const formatTime = (date: Date) => {
 }
 
 .text-input {
-  width: 200px;
+  width: 170px;
   position: absolute;
-  right: 90px;
+  right: 75px;
   bottom: 80px;
   overflow-y: auto;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;

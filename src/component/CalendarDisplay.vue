@@ -132,11 +132,7 @@ const useDateDisplay = DateDisplay();
 const useScheduleStore = ScheduleStore();
 const useEventData = EventData();
 
-const props = defineProps({
-  canvasWidth: { type: Number, default: 1200 },
-  canvasHeight: { type: Number, default: 960 }
-});
-const canvasWidth = computed(() => props.canvasWidth );
+const canvasWidth = computed(() => useCanvasParams.canvasWidth );
 const rowHeight = ref<number>(20);
 const containerHeight = ref<number>(0);
 const minRowHeight = computed(() => containerHeight.value / 96);
@@ -454,7 +450,7 @@ function handleMove(event: { clientX: number; clientY: number; }) {
           if (!isOverlapping || previewRowCount === 0) {
               currentRow.value = newCurrentRow;
               useEventData.resetRecurrence();
-              useEventData.currentEvent = {...useEventData.currentEvent, ...getRectTimeRange(previewRect), repeat: false, title: '新事项'};
+              useEventData.currentEvent = {...useEventData.currentEvent, ...getRectTimeRange(previewRect), repeat: false, title: '新事项',category: useScheduleStore.categories[0].name};
           }
           break;
       }
@@ -734,7 +730,6 @@ onUnmounted(() => {
 .final-rect {
   fill: var(--shallow);
   stroke-width: 1;
-  transition: all 10ms linear;
   will-change: transform;
 }
 .rect-stripe {
@@ -762,7 +757,7 @@ onUnmounted(() => {
 }
 
 .event-content {
-  width: 100%;
+  width: 93%;
   height: 100%;
   display: flex;
   flex-direction: column;
